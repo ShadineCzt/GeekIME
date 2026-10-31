@@ -1,0 +1,46 @@
+# 小鹤双拼（GeekIME）
+__include: double_pinyin.schema:/
+
+schema:
+  schema_id: double_pinyin_flypy
+  name: 小鹤双拼
+  version: "1.0"
+
+speller:
+  algebra/+:
+    # 零声母（单韵母双写 + ang/eng 键位；其余复合韵母直接输全拼）
+    - derive/^a$/aa/
+    - derive/^o$/oo/
+    - derive/^e$/ee/
+    - derive/^ang$/ah/
+    - derive/^eng$/eg/
+    # 声母：zh/ch/sh
+    - xform/^sh/u/
+    - xform/^ch/i/
+    - xform/^zh/v/
+    # 韵母
+    - xform/^(.)iu$/$1q/
+    - xform/^(.)ei$/$1w/
+    - xform/^(.)uan$/$1r/
+    - xform/^(.)[uv]e$/$1t/
+    - xform/^(.)un$/$1y/
+    - xform/^(.)uo$/$1o/
+    - xform/^(.)ie$/$1p/
+    - xform/^(.)i?ong$/$1s/
+    - xform/^(.)(ing|uai)$/$1k/
+    - xform/^(.)ai$/$1d/
+    - xform/^(.)en$/$1f/
+    - xform/^(.)eng$/$1g/
+    - xform/^(.)[iu]ang$/$1l/
+    - xform/^(.)ang$/$1h/
+    - xform/^(.)ian$/$1m/
+    - xform/^(.)an$/$1j/
+    - xform/^(.)ou$/$1z/
+    - xform/^(.)(ia|ua)$/$1x/
+    - xform/^(.)iao$/$1n/
+    - xform/^(.)ao$/$1c/
+    - xform/^(.)ui$/$1v/
+    - xform/^(.)in$/$1b/
+
+translator:
+  prism: double_pinyin_flypy   # 必须显式命名，与其它方案隔离

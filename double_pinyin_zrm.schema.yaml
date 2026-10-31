@@ -1,0 +1,46 @@
+# 自然码双拼（GeekIME）
+__include: double_pinyin.schema:/
+
+schema:
+  schema_id: double_pinyin_zrm
+  name: 自然码双拼
+  version: "1.0"
+
+speller:
+  algebra/+:
+    # 零声母（单韵母双写 + ang/eng 键位；其余复合韵母直接输全拼）
+    - derive/^a$/aa/
+    - derive/^o$/oo/
+    - derive/^e$/ee/
+    - derive/^ang$/ah/
+    - derive/^eng$/eg/
+    # 声母：zh/ch/sh
+    - xform/^sh/u/
+    - xform/^ch/i/
+    - xform/^zh/v/
+    # 韵母（ing/uai 同键 Y；ü 走全拼 v 直通）
+    - xform/^(.)iu$/$1q/
+    - xform/^(.)(ia|ua)$/$1w/
+    - xform/^(.)uan$/$1r/
+    - xform/^(.)[uv]e$/$1t/
+    - xform/^(.)(ing|uai)$/$1y/
+    - xform/^(.)uo$/$1o/
+    - xform/^(.)un$/$1p/
+    - xform/^(.)i?ong$/$1s/
+    - xform/^(.)[iu]ang$/$1d/
+    - xform/^(.)en$/$1f/
+    - xform/^(.)eng$/$1g/
+    - xform/^(.)ang$/$1h/
+    - xform/^(.)an$/$1j/
+    - xform/^(.)ao$/$1k/
+    - xform/^(.)ai$/$1l/
+    - xform/^(.)ei$/$1z/
+    - xform/^(.)ie$/$1x/
+    - xform/^(.)iao$/$1c/
+    - xform/^(.)ui$/$1v/
+    - xform/^(.)ou$/$1b/
+    - xform/^(.)in$/$1n/
+    - xform/^(.)ian$/$1m/
+
+translator:
+  prism: double_pinyin_zrm   # 必须显式命名，与其它方案隔离

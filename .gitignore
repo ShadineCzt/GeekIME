@@ -1,0 +1,25 @@
+# build artifacts & runtime state
+build/
+backups/
+__pycache__/
+*.log
+csc_out.txt
+csc_err.txt
+_tmp_*
+.trae/
+
+# personal / secret data - never commit
+custom_phrase.txt
+phrase_notes.json
+sync_config.json
+ai_config.json
+ai_history.log
+english_last.txt
+installation.yaml
+user.yaml
+*.userdb/
+*.userdb/
+
+# binaries
+GeekTray.exe
+*.bin

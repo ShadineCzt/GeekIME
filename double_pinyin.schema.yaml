@@ -1,0 +1,102 @@
+# 双拼通用基座（GeekIME）
+# 本文件不直接使用；各双拼子方案通过 __include 继承本基座，仅追加键位规则。
+schema:
+  schema_id: double_pinyin
+  name: 双拼通用基座
+  version: "1.0"
+
+switches:
+  - name: ascii_mode
+    reset: 0
+    states: [ 中文, 西文 ]
+  - name: simplification
+    reset: 1
+    states: [ 漢字, 汉字 ]
+
+engine:
+  processors:
+    - lua_processor@punct_direct
+    - ascii_composer
+    - recognizer
+    - key_binder
+    - speller
+    - punctuator
+    - selector
+    - navigator
+    - express_editor
+  segmentors:
+    - ascii_segmentor
+    - matcher
+    - abc_segmentor
+    - punct_segmentor
+    - fallback_segmentor
+  translators:
+    - punct_translator
+    - table_translator@custom_phrase
+    - lua_translator@v_mode
+    - lua_translator@english_mode
+    - script_translator
+  filters:
+    - simplifier
+    - uniquifier
+
+speller:
+  alphabet: zyxwvutsrqponmlkjihgfedcba;
+  initials: zyxwvutsrqponmlkjihgfedcba;
+  delimiter: " '"
+  algebra:
+    - xform/^([a-z]+)[0-5]$/$1/                       # 去掉输入里的声调数字
+    - derive/^([a-z]+)$/$1/                           # 全拼直通（双拼全拼混输核心）
+    - derive/^([jqxy])u$/$1v/                         # 全拼 ü 容错
+    - derive/^([nl])ue$/$1ve/
+    # ---- 模糊音（默认开启；想关闭就把下面整段注释掉）----
+    - derive/^zh/z/            - derive/^z/zh/
+    - derive/^ch/c/            - derive/^c/ch/
+    - derive/^sh/s/            - derive/^s/sh/
+    - derive/^n/l/             - derive/^l/n/
+    - derive/^hu$/fu/          - derive/^fu$/hu/
+    - derive/^hong$/feng/      - derive/^feng$/hong/
+    - derive/^hu([in])$/fe$1/  - derive/^fe([in])$/hu$1/
+    - derive/^hu([ao])/f$1/    - derive/^f([ao])/hu$1/
+    - derive/^(.)an$/$1ang/    - derive/^(.)ang$/$1an/
+    - derive/^(.)en$/$1eng/    - derive/^(.)eng$/$1en/
+    - derive/^(.)in$/$1ing/    - derive/^(.)ing$/$1in/
+    - derive/^(.)ian$/$1iang/  - derive/^(.)iang$/$1ian/
+    - derive/^(.)uan$/$1uang/  - derive/^(.)uang$/$1uan/
+    # ---- 大写转小写：必须位于子方案键位规则之前，故置于基座末尾 ----
+    - xlit/ABCDEFGHIJKLMNOPQRSTUVWXYZ/abcdefghijklmnopqrstuvwxyz/
+
+translator:
+  dictionary: luna_pinyin.extended
+  # 注意：各子方案必须显式指定 prism（见子方案文件），否则 5 套方案共用同一 prism 会互相覆盖
+  preedit_format:
+    - xform/([nl])v/$1ü/
+    - xform/([nl])ue/$1üe/
+    - xform/([jqxy])v/$1u/
+
+custom_phrase:
+  dictionary: ""
+  user_dict: custom_phrase
+  db_class: tabledb
+  enable_completion: false
+  enable_sentence: false
+  initial_quality: 1000
+
+simplifier:
+  option_name: simplification
+
+key_binder:
+  import_preset: default
+  bindings:
+    # 覆盖默认的";选第2候选"，把 ; 留作双拼 ing 键的载体
+    - { when: has_menu, accept: semicolon, send: ";" }
+
+punctuator:
+  import_preset: default
+
+recognizer:
+  import_preset: default
+  patterns:
+    # 仅当 v 后跟数字、日期/时间/星期命令或双字母符号时才走 v 模式；
+    # 排除 v+单字母（如 ve=zhe、va=zha、vd=zhuang 等 zh 声母双拼组合）
+    v_mode: "^v([0-9]+|rq|sj|xq|jt|xj|js|xz|du|xh|ch|pm|wq|dd|fh)$"

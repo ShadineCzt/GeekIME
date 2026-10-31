@@ -1,0 +1,54 @@
+# 智能ABC双拼（GeekIME）
+# 声母特殊：zh→A、ch→E、sh→V
+__include: double_pinyin.schema:/
+
+schema:
+  schema_id: double_pinyin_abc
+  name: 智能ABC双拼
+  version: "1.0"
+
+speller:
+  algebra/+:
+    # 零声母（o 前置；ei 在 Q）
+    - derive/^a$/oa/
+    - derive/^ai$/ol/
+    - derive/^an$/oj/
+    - derive/^ang$/oh/
+    - derive/^ao$/ok/
+    - derive/^e$/oe/
+    - derive/^ei$/oq/
+    - derive/^en$/of/
+    - derive/^eng$/og/
+    - derive/^er$/or/
+    - derive/^o$/oo/
+    - derive/^ou$/ob/
+    # 声母：zh→a / ch→e / sh→v
+    - xform/^zh/a/
+    - xform/^ch/e/
+    - xform/^sh/v/
+    # 韵母
+    - xform/^(.)ei$/$1q/
+    - xform/^(.)ian$/$1w/
+    - xform/^(.)iu$/$1r/
+    - xform/^(.)[iu]ang$/$1t/
+    - xform/^(.)ing$/$1y/
+    - xform/^(.)uo$/$1o/
+    - xform/^(.)uan$/$1p/
+    - xform/^(.)i?ong$/$1s/
+    - xform/^(.)(ia|ua)$/$1d/
+    - xform/^(.)en$/$1f/
+    - xform/^(.)eng$/$1g/
+    - xform/^(.)ang$/$1h/
+    - xform/^(.)an$/$1j/
+    - xform/^(.)ao$/$1k/
+    - xform/^(.)ai$/$1l/
+    - xform/^(.)iao$/$1z/
+    - xform/^(.)ie$/$1x/
+    - xform/^(.)(in|uai)$/$1c/
+    - xform/^(.)ou$/$1b/
+    - xform/^(.)un$/$1n/
+    - xform/^(.)[uv]e$/$1m/
+    - xform/^(.)ui$/$1m/
+
+translator:
+  prism: double_pinyin_abc   # 必须显式命名，与其它方案隔离

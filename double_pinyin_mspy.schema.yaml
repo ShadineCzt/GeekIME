@@ -1,0 +1,56 @@
+# 微软双拼（GeekIME）
+# 键位与搜狗基本相同，仅两点差异：ü 不作键位映射（nv 直通）、ue→t（ve 不映射）
+__include: double_pinyin.schema:/
+
+schema:
+  schema_id: double_pinyin_mspy
+  name: 微软双拼
+  version: "1.0"
+
+speller:
+  algebra/+:
+    # 零声母（o 前置，显式枚举）
+    - derive/^a$/oa/
+    - derive/^ai$/ol/
+    - derive/^an$/oj/
+    - derive/^ang$/oh/
+    - derive/^ao$/ok/
+    - derive/^e$/oe/
+    - derive/^ei$/oz/
+    - derive/^en$/of/
+    - derive/^eng$/og/
+    - derive/^er$/or/
+    - derive/^o$/oo/
+    - derive/^ou$/ob/
+    # 声母：zh/ch/sh
+    - xform/^sh/u/
+    - xform/^ch/i/
+    - xform/^zh/v/
+    # 韵母（与搜狗差异：uai→y 不含 v；ue→t 不含 ve）
+    - xform/^(.)iu$/$1q/
+    - xform/^(.)(ia|ua)$/$1w/
+    - xform/^(.)er$/$1r/
+    - xform/^(.)uan$/$1r/
+    - xform/^(.)ue$/$1t/
+    - xform/^(.)uai$/$1y/
+    - xform/^(.)uo$/$1o/
+    - xform/^(.)un$/$1p/
+    - xform/^(.)i?ong$/$1s/
+    - xform/^(.)[iu]ang$/$1d/
+    - xform/^(.)en$/$1f/
+    - xform/^(.)eng$/$1g/
+    - xform/^(.)ang$/$1h/
+    - xform/^(.)an$/$1j/
+    - xform/^(.)ao$/$1k/
+    - xform/^(.)ai$/$1l/
+    - xform/^(.)ing$/$1;/
+    - xform/^(.)ei$/$1z/
+    - xform/^(.)ie$/$1x/
+    - xform/^(.)iao$/$1c/
+    - xform/^(.)ui$/$1v/
+    - xform/^(.)ou$/$1b/
+    - xform/^(.)in$/$1n/
+    - xform/^(.)ian$/$1m/
+
+translator:
+  prism: double_pinyin_mspy   # 必须显式命名，与其它方案隔离

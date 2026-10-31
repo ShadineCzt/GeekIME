@@ -1,0 +1,86 @@
+customization:
+  distribution_code_name: Weasel
+  distribution_version: 0.17.4
+  generator: "Weasel::UIStyleSettings"
+  modified_time: "Mon Sep 15 19:30:00 2026"
+  rime_version: 1.13.1
+patch:
+  # 默认主题
+  "style/color_scheme": geek_light
+  "style/horizontal": true # 横排显示
+
+  # ---------- 布局美化 ----------
+  "style/font_face": "Microsoft YaHei UI"
+  "style/label_font_face": "Microsoft YaHei UI"
+  "style/comment_font_face": "Microsoft YaHei UI"
+  "style/font_point": 15
+  "style/label_font_point": 13
+  "style/comment_font_point": 12
+  "style/label_format": "%s."
+  "style/layout/corner_radius": 6
+  "style/layout/hilite_padding": 4
+  "style/layout/border_width": 1
+  "style/layout/margin_x": 14
+  "style/layout/margin_y": 12
+  "style/layout/spacing": 12
+  "style/layout/candidate_spacing": 6
+  "style/layout/shadow_radius": 6
+  "style/layout/shadow_offset_x": 2
+  "style/layout/shadow_offset_y": 3
+
+  # ---------- 主题1：极客白（默认，对标搜狗默认皮肤） ----------
+  "preset_color_schemes/geek_light":
+    name: "极客白／Geek Light"
+    author: GeekIME
+    text_color: 0x444444
+    back_color: 0xffffff
+    border_color: 0xdcdcdc
+    shadow_color: 0x22000000
+    label_color: 0x999999
+    candidate_text_color: 0x333333
+    candidate_back_color: 0xffffff
+    comment_text_color: 0xaaaaaa
+    hilited_text_color: 0x000000
+    hilited_back_color: 0xf2f2f2
+    hilited_candidate_text_color: 0xffffff
+    hilited_candidate_back_color: 0xff7a24
+    hilited_candidate_label_color: 0xffffff
+    hilited_comment_text_color: 0xffe0c0
+
+  # ---------- 主题2：极客夜（深色护眼） ----------
+  "preset_color_schemes/geek_dark":
+    name: "极客夜／Geek Dark"
+    author: GeekIME
+    text_color: 0xd8d8d8
+    back_color: 0x2b2b2b
+    border_color: 0x3a3a3a
+    shadow_color: 0x55000000
+    label_color: 0x777777
+    candidate_text_color: 0xcccccc
+    candidate_back_color: 0x2b2b2b
+    comment_text_color: 0x6f8a8a
+    hilited_text_color: 0xffffff
+    hilited_back_color: 0x3c3c3c
+    hilited_candidate_text_color: 0xffffff
+    hilited_candidate_back_color: 0x0a84ff
+    hilited_candidate_label_color: 0xffffff
+    hilited_comment_text_color: 0x9fd0ff
+
+  # ---------- 主题3：极客果冻（macOS 质感） ----------
+  "preset_color_schemes/geek_macos":
+    name: "极客果冻／Geek macOS"
+    author: GeekIME
+    text_color: 0x1a1a1a
+    back_color: 0xf5f5f5
+    border_color: 0xe0e0e0
+    shadow_color: 0x2e000000
+    label_color: 0xb0b0b0
+    candidate_text_color: 0x2a2a2a
+    candidate_back_color: 0xf5f5f5
+    comment_text_color: 0xa0a0a0
+    hilited_text_color: 0x1a1a1a
+    hilited_back_color: 0xe9e9e9
+    hilited_candidate_text_color: 0x2a2a2a
+    hilited_candidate_back_color: 0xd0d0d0
+    hilited_candidate_label_color: 0x1a1a1a
+    hilited_comment_text_color: 0x8a8a8a

@@ -1,0 +1,1515 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>GeekIME 管理台</title>
+<style>
+  :root {
+    --accent: #ff7a24;
+    --accent-2: #ff5a1f;
+    --accent-soft: #fff3ea;
+    --accent-ring: rgba(255, 122, 36, .18);
+    --bg: #f4f5f9;
+    --card: #ffffff;
+    --border: #eceef3;
+    --text: #1c2029;
+    --muted: #8a90a0;
+    --danger: #e5484d;
+    --danger-soft: #fdecec;
+    --shadow: 0 1px 2px rgba(16,24,40,.05), 0 4px 16px rgba(16,24,40,.06);
+    --radius: 16px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  html { scroll-behavior: smooth; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei UI", "Microsoft YaHei", system-ui, sans-serif;
+    background:
+      radial-gradient(1200px 400px at 80% -100px, #ffe9dc 0%, transparent 60%),
+      radial-gradient(900px 380px at -10% -80px, #e8f0ff 0%, transparent 55%),
+      var(--bg);
+    color: var(--text); font-size: 14px; min-height: 100vh;
+  }
+
+  /* ---------- 顶栏 ---------- */
+  .topbar {
+    display: flex; align-items: center; justify-content: space-between; gap: 10px;
+    padding: 14px clamp(14px, 4vw, 28px);
+    position: sticky; top: 0; z-index: 30;
+    background: rgba(255,255,255,.82); backdrop-filter: saturate(1.5) blur(14px);
+    border-bottom: 1px solid var(--border);
+  }
+  .brand { display: flex; align-items: center; gap: 10px; min-width: 0; }
+  .brand .mark {
+    width: 34px; height: 34px; border-radius: 10px; flex: none;
+    background: linear-gradient(135deg, var(--accent), var(--accent-2));
+    color: #fff; font-weight: 800; font-size: 16px;
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 4px 12px rgba(255,106,26,.35);
+  }
+  .brand h1 { font-size: 17px; font-weight: 700; white-space: nowrap; }
+  .brand .sub { font-size: 11px; color: var(--muted); font-weight: 400; }
+  .right { display: flex; align-items: center; gap: 8px; }
+  #status {
+    color: var(--muted); font-size: 12px; white-space: nowrap;
+    background: #f1f2f6; border-radius: 999px; padding: 5px 10px;
+  }
+  #status.busy { color: var(--accent); background: var(--accent-soft); }
+
+  /* ---------- 按钮 ---------- */
+  .btn {
+    border: none; border-radius: 999px; padding: 9px 16px; cursor: pointer;
+    font-size: 13.5px; font-weight: 600; background: #eef0f4; color: #3d4351;
+    transition: transform .12s, box-shadow .12s, opacity .12s; white-space: nowrap;
+    display: inline-flex; align-items: center; gap: 6px; text-decoration: none;
+  }
+  .btn:active { transform: scale(.97); }
+  .btn:hover { box-shadow: 0 2px 8px rgba(16,24,40,.08); }
+  .btn:disabled { opacity: .45; cursor: not-allowed; box-shadow: none; }
+  .btn.primary { background: linear-gradient(135deg, var(--accent), var(--accent-2)); color: #fff; box-shadow: 0 4px 14px rgba(255,106,26,.32); }
+  .btn.primary:hover { box-shadow: 0 6px 18px rgba(255,106,26,.42); }
+  .btn.danger { background: var(--danger-soft); color: var(--danger); }
+  .btn.ghost { background: #fff; border: 1px solid var(--border); color: var(--text); font-weight: 500; }
+  .btn.small { padding: 6px 12px; font-size: 12.5px; border-radius: 999px; }
+
+  /* ---------- 标签栏（桌面顶部 / 手机底部） ---------- */
+  .tabs {
+    display: inline-flex; gap: 4px; padding: 4px; margin: 16px clamp(14px, 4vw, 28px) 0;
+    background: rgba(255,255,255,.8); border: 1px solid var(--border);
+    border-radius: 999px; box-shadow: var(--shadow); backdrop-filter: blur(8px);
+  }
+  .tab {
+    padding: 8px 20px; cursor: pointer; border-radius: 999px;
+    color: var(--muted); font-size: 14px; font-weight: 500; user-select: none;
+    transition: .15s; white-space: nowrap;
+  }
+  .tab.active { background: linear-gradient(135deg, var(--accent), var(--accent-2)); color: #fff; font-weight: 600; box-shadow: 0 3px 10px rgba(255,106,26,.3); }
+
+  /* ---------- 布局 ---------- */
+  .wrap { padding: clamp(12px, 3vw, 24px); max-width: 1080px; margin: 0 auto; }
+  .panel { display: none; animation: fadeup .25s ease; }
+  .panel.active { display: block; }
+  @keyframes fadeup { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+  @keyframes pop { from { opacity: 0; transform: translateY(14px) scale(.985); } to { opacity: 1; transform: none; } }
+  .card { background: var(--card); border-radius: var(--radius); box-shadow: var(--shadow); padding: clamp(14px, 3vw, 22px); margin-bottom: 18px; }
+  .card h2 { font-size: 15px; font-weight: 700; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
+  .card h2 .dot { width: 8px; height: 8px; border-radius: 50%; background: linear-gradient(135deg, var(--accent), var(--accent-2)); flex: none; }
+  .card .toolbar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 14px; }
+  .form-row { display: flex; gap: 10px; margin-bottom: 10px; flex-wrap: wrap; align-items: center; }
+  .form-row input { flex: 1; min-width: 120px; }
+
+  /* ---------- 输入控件 ---------- */
+  input:not([type]), input[type="text"], input[type="number"], input[type="file"], input[type="password"], input[type="search"], input[type="url"], input[type="email"], textarea, select {
+    border: 1px solid var(--border); border-radius: 10px; padding: 9px 12px;
+    font-size: 14px; outline: none; font-family: inherit; background: #fbfbfd; color: var(--text);
+    transition: border-color .15s, box-shadow .15s;
+  }
+  input:focus, textarea:focus, select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-ring); background: #fff; }
+  select { cursor: pointer; appearance: none; -webkit-appearance: none; padding-right: 28px;
+    background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="10" height="6"><path d="M1 1l4 4 4-4" stroke="%238a90a0" stroke-width="1.6" fill="none" stroke-linecap="round"/></svg>');
+    background-repeat: no-repeat; background-position: right 10px center; }
+  .hint { color: var(--muted); font-size: 12px; margin-top: 6px; line-height: 1.6; }
+  .muted { color: var(--muted); font-size: 12.5px; }
+
+  /* ---------- 表格 ---------- */
+  .table-scroll { overflow-x: auto; margin: 0 -6px; padding: 0 6px; }
+  table { width: 100%; border-collapse: collapse; }
+  th, td { text-align: left; padding: 10px 10px; border-bottom: 1px solid #f2f3f7; vertical-align: middle; }
+  th { color: var(--muted); font-weight: 500; font-size: 12.5px; }
+  tbody tr { transition: background .12s; }
+  tbody tr:hover { background: #fafbfd; }
+  td .ops { display: flex; gap: 6px; }
+  input[type="checkbox"] { width: 17px; height: 17px; accent-color: var(--accent); cursor: pointer; }
+
+  /* ---------- 短语表单 / 列表 ---------- */
+  .form-grid { display: grid; grid-template-columns: 1.5fr 1fr .7fr 1.1fr auto; gap: 12px; align-items: end; }
+  .form-grid .fcell input, .form-grid .fcell select { width: 100%; }
+  .form-grid .fbtns { display: flex; gap: 8px; }
+  .flabel { display: block; font-size: 12px; font-weight: 600; color: var(--muted); margin-bottom: 6px; }
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 12px; }
+  .grid-2 .fcell input { width: 100%; }
+  .switch-row { display: flex; align-items: center; gap: 10px; font-weight: 600; cursor: pointer; background: #fbfbfd; border: 1px solid var(--border); border-radius: 12px; padding: 12px 14px; }
+  .switch-row input { flex: none; }
+  .ai-hist { background: #fbfbfd; border: 1px solid var(--border); border-radius: 12px; padding: 14px; white-space: pre-wrap; line-height: 1.75; font-size: 13px; max-height: 420px; overflow: auto; }
+  tr.flash td { animation: flashrow 1.8s ease; }
+  @keyframes flashrow { from { background: #fff0e2; } to { background: transparent; } }
+  @media (max-width: 640px) { .grid-2 { grid-template-columns: 1fr; } }
+
+  /* ---------- 自绘下拉（原生 select 弹出层是方角的，无法改样式，这里整套自绘） ---------- */
+  .dd { position: relative; }
+  .dd-btn {
+    width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 8px;
+    border: 1px solid var(--border); border-radius: 10px; padding: 9px 12px;
+    background: #fbfbfd; color: var(--text); font-size: 14px; font-family: inherit;
+    cursor: pointer; text-align: left; transition: border-color .15s, box-shadow .15s, background .15s;
+  }
+  .dd-btn:hover { background: #fff; }
+  .dd.open .dd-btn { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-ring); background: #fff; }
+  .dd-btn span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .dd-btn .caret { flex: none; width: 0; height: 0; border-left: 5px solid transparent; border-right: 5px solid transparent; border-top: 6px solid var(--muted); transition: transform .16s; }
+  .dd.open .dd-btn .caret { transform: rotate(180deg); }
+  .dd-menu {
+    display: none; position: absolute; z-index: 60; top: calc(100% + 6px); left: 0; right: 0;
+    background: #fff; border: 1px solid var(--border); border-radius: 12px;
+    box-shadow: 0 12px 32px rgba(16,24,40,.16); padding: 6px; max-height: 240px; overflow: auto;
+    animation: pop .12s ease;
+  }
+  .dd.open .dd-menu { display: block; }
+  .dd-item { padding: 8px 10px; border-radius: 8px; font-size: 13.5px; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .dd-item:hover { background: #f4f5f9; }
+  .dd-item.sel { background: var(--accent-soft); color: var(--accent-2); font-weight: 600; }
+  .dd-item.dd-new { color: var(--muted); margin-top: 4px; border-top: 1px solid var(--border); border-radius: 0 0 8px 8px; padding-top: 9px; }
+  .dd-item.dd-new:hover { color: var(--accent); background: var(--accent-soft); }
+
+  /* ---------- 权重步进器（原生上下箭头太小点不住） ---------- */
+  .stepper {
+    display: flex; align-items: stretch; border: 1px solid var(--border); border-radius: 10px;
+    background: #fbfbfd; overflow: hidden; transition: border-color .15s, box-shadow .15s;
+  }
+  .stepper:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-ring); background: #fff; }
+  .stepper input {
+    flex: 1; min-width: 0; border: none !important; border-radius: 0 !important;
+    background: transparent !important; box-shadow: none !important;
+    text-align: center; padding: 9px 2px !important; font-variant-numeric: tabular-nums;
+  }
+  .stepper input::-webkit-outer-spin-button, .stepper input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+  .st-btn {
+    flex: none; width: 36px; border: none; background: #fff; color: #5b6170;
+    font-size: 16px; font-weight: 700; line-height: 1; cursor: pointer; transition: background .12s, color .12s;
+  }
+  .st-btn:hover { background: var(--accent-soft); color: var(--accent-2); }
+  .st-btn:active { background: #ffe3cf; }
+
+  /* ---------- 备注 / 短语库检索结果 ---------- */
+  .note-cell { color: var(--muted); font-size: 12.5px; max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .search-result { margin-top: 14px; display: grid; gap: 8px; max-height: 400px; overflow: auto; }
+  .sr-item { border: 1px solid var(--border); border-radius: 12px; padding: 10px 12px; background: #fbfbfd; }
+  .sr-word { font-weight: 600; word-break: break-all; }
+  .sr-meta { display: flex; align-items: center; gap: 8px; margin-top: 4px; font-size: 12px; color: var(--muted); flex-wrap: wrap; }
+  .sr-note { margin-top: 6px; font-size: 12.5px; color: #5b6170; line-height: 1.65; }
+
+  .pill { font-size: 11px; font-weight: 600; color: var(--accent); background: var(--accent-soft); border-radius: 999px; padding: 3px 10px; }
+  .list-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; }
+  .list-head h2 { margin-bottom: 0; }
+  .count-badge { font-size: 12px; font-weight: 700; color: var(--accent); background: var(--accent-soft); border-radius: 999px; padding: 2px 9px; }
+  .search-box { flex: 1 1 200px; max-width: 320px; }
+  .search-box input { width: 100%; border-radius: 999px; padding-left: 14px; }
+  .chips { display: flex; gap: 8px; overflow-x: auto; padding: 2px 2px 10px; scrollbar-width: thin; }
+  .chip { flex: none; cursor: pointer; border: 1px solid var(--border); background: #fff; color: #5b6170; border-radius: 999px; padding: 6px 14px; font-size: 13px; font-weight: 500; display: flex; align-items: center; gap: 6px; transition: .15s; user-select: none; }
+  .chip .n { font-size: 11px; color: var(--muted); background: #f1f2f6; border-radius: 999px; padding: 1px 7px; }
+  .chip.active { background: linear-gradient(135deg, var(--accent), var(--accent-2)); border-color: transparent; color: #fff; box-shadow: 0 3px 10px rgba(255,106,26,.28); }
+  .chip.active .n { background: rgba(255,255,255,.25); color: #fff; }
+  .spacer { flex: 1; }
+  .tag { display: inline-block; font-size: 11.5px; color: #5b6170; background: #f1f2f6; border-radius: 7px; padding: 2px 8px; white-space: nowrap; }
+  td.word-cell { font-weight: 600; word-break: break-all; }
+  .empty { text-align: center; color: var(--muted); font-size: 13px; padding: 26px 0; }
+  .deploy-line { display: none; align-items: center; gap: 8px; font-size: 12.5px; color: var(--accent); background: var(--accent-soft); border-radius: 10px; padding: 8px 12px; margin-top: 12px; }
+  .deploy-line.show { display: flex; }
+  .deploy-line.ok { color: #0a8f4b; background: #eaf9f0; }
+  .deploy-line.err { color: var(--danger); background: var(--danger-soft); }
+  .spin { width: 12px; height: 12px; border-radius: 50%; border: 2px solid rgba(255,122,36,.3); border-top-color: var(--accent); animation: sp .7s linear infinite; flex: none; }
+  @keyframes sp { to { transform: rotate(360deg); } }
+  .g-row { display: flex; align-items: center; gap: 10px; padding: 10px 0; border-bottom: 1px solid #f2f3f7; }
+  .g-row:last-child { border-bottom: none; }
+  .g-row .gname { flex: 1; font-weight: 600; font-size: 13.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .g-row .gcount { font-size: 11.5px; color: var(--muted); white-space: nowrap; }
+
+  /* ---------- 方案卡片 ---------- */
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(270px, 1fr)); gap: 14px; }
+  .scard {
+    background: #fbfbfd; border: 1px solid var(--border); border-radius: 14px;
+    padding: 16px; display: flex; flex-direction: column; gap: 12px; transition: .15s;
+  }
+  .scard:hover { box-shadow: var(--shadow); }
+  .scard.active-card { border: 1.5px solid var(--accent); background: linear-gradient(180deg, var(--accent-soft), #fff); }
+  .scard .head { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
+  .scard .name { font-weight: 700; font-size: 15px; }
+  .scard .id { color: var(--muted); font-size: 11.5px; font-family: Consolas, Monaco, monospace; margin-top: 2px; }
+  .scard .badge { display: inline-block; font-size: 10.5px; color: var(--accent); background: var(--accent-soft); border-radius: 999px; padding: 2px 8px; margin-left: 6px; vertical-align: 2px; }
+  .scard .foot { display: flex; gap: 8px; flex-wrap: wrap; }
+  .switch { display: flex; align-items: center; gap: 8px; cursor: pointer; user-select: none; font-size: 12.5px; color: var(--muted); flex: none; }
+  .switch input { display: none; }
+  .switch .track { width: 40px; height: 23px; border-radius: 999px; background: #dcdfe6; position: relative; transition: .2s; flex: none; }
+  .switch .track::after { content: ""; position: absolute; width: 19px; height: 19px; border-radius: 50%; background: #fff; top: 2px; left: 2px; transition: .2s; box-shadow: 0 1px 3px rgba(0,0,0,.25); }
+  .switch input:checked + .track { background: linear-gradient(135deg, var(--accent), var(--accent-2)); }
+  .switch input:checked + .track::after { left: 19px; }
+
+  /* ---------- 弹窗 ---------- */
+  .modal-mask { display: none; position: fixed; inset: 0; background: rgba(20,22,30,.45); backdrop-filter: blur(3px); z-index: 100; align-items: center; justify-content: center; padding: 16px; }
+  .modal-mask.show { display: flex; }
+  .modal { background: #fff; border-radius: 20px; width: 560px; max-width: 100%; max-height: 88vh; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 24px 64px rgba(0,0,0,.22); animation: pop .22s ease; }
+  .modal .m-head { display: flex; align-items: center; justify-content: space-between; padding: 16px 20px; border-bottom: 1px solid var(--border); }
+  .modal .m-head h3 { font-size: 16px; font-weight: 700; }
+  .modal .m-body { padding: 20px; overflow-y: auto; }
+  .modal .m-foot { display: flex; justify-content: flex-end; gap: 10px; padding: 14px 20px; border-top: 1px solid var(--border); background: #fcfcfe; }
+  .x { border: none; background: #f1f2f6; width: 30px; height: 30px; border-radius: 50%; cursor: pointer; color: var(--muted); font-size: 14px; line-height: 1; }
+  .x:hover { background: #e6e8ee; color: var(--text); }
+  .field { margin-bottom: 14px; }
+  .field label { display: block; margin-bottom: 6px; font-size: 12.5px; color: var(--muted); font-weight: 500; }
+  .field input, .field select { width: 100%; }
+  .modal-wide { width: 800px; }
+  .sec-title { font-weight: 700; font-size: 14px; margin: 22px 0 2px; display: flex; align-items: center; gap: 8px; }
+  .sec-title::before { content: ""; width: 4px; height: 14px; border-radius: 2px; background: linear-gradient(180deg, var(--accent), var(--accent-2)); }
+  .sec-note { color: var(--muted); font-size: 12px; margin-bottom: 10px; line-height: 1.6; }
+
+  /* ---------- 键盘总览 ---------- */
+  .keyboard { display: flex; flex-direction: column; gap: 6px; padding: 14px 10px; background: #f7f8fb; border: 1px solid var(--border); border-radius: 14px; overflow-x: auto; }
+  .kb-row { display: flex; gap: 6px; justify-content: center; min-width: max-content; margin: 0 auto; }
+  .kbkey {
+    flex: none; width: clamp(46px, 11vw, 68px); border-radius: 9px; padding: 6px 2px 7px;
+    background: #fff; border: 1px solid #e6e8ee;
+    box-shadow: 0 2px 0 #e2e4ea; text-align: center; transition: .12s;
+  }
+  .kbkey .k { font-weight: 800; font-size: 14px; }
+  .kbkey .v { font-size: 10.5px; color: var(--accent-2); line-height: 1.35; word-break: break-all; min-height: 14px; font-weight: 600; }
+  .kbkey.empty { box-shadow: 0 1px 0 #e9ebf0; }
+  .kbkey.empty .v { color: #cfd3dc; font-weight: 400; }
+
+  /* ---------- 映射表 ---------- */
+  table.map-table { width: 100%; border-collapse: collapse; }
+  table.map-table td { padding: 8px 10px; border-bottom: 1px solid #f2f3f7; font-size: 14px; }
+  table.map-table tr:last-child td { border-bottom: none; }
+  table.map-table td.py { font-family: Consolas, Monaco, monospace; width: 48%; color: #3d4351; }
+  table.map-table select { width: 84px; padding: 6px 26px 6px 10px; font-family: Consolas, Monaco, monospace; }
+  .map-wrap { background: #fbfbfd; border: 1px solid var(--border); border-radius: 12px; padding: 4px 6px; }
+  .adv { margin-top: 22px; border: 1px dashed #d8dbe4; border-radius: 12px; padding: 12px 14px; background: #fcfcfe; }
+  .adv summary { cursor: pointer; color: var(--muted); font-size: 13px; user-select: none; }
+  .adv textarea { margin-top: 10px; font-family: Consolas, Monaco, monospace; font-size: 12px; width: 100%; }
+  .adv .row { margin-top: 10px; display: flex; gap: 8px; flex-wrap: wrap; }
+
+  /* ---------- 提示气泡 ---------- */
+  .toast {
+    position: fixed; top: 70px; left: 50%; transform: translateX(-50%) translateY(-12px);
+    background: rgba(28,32,41,.92); color: #fff; padding: 10px 18px; border-radius: 12px;
+    font-size: 13.5px; opacity: 0; transition: .25s; pointer-events: none; z-index: 200;
+    box-shadow: 0 8px 24px rgba(0,0,0,.25); max-width: 86vw; text-align: center;
+    backdrop-filter: blur(8px);
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  /* ---------- 手机布局 ---------- */
+  @media (max-width: 720px) {
+    .tabs { position: fixed; left: 12px; right: 12px; bottom: calc(12px + env(safe-area-inset-bottom)); margin: 0; z-index: 40; display: flex; background: rgba(255,255,255,.92); }
+    .tab { flex: 1; text-align: center; padding: 10px 0; }
+    .wrap { padding-bottom: 96px; }
+    #status { display: none; }
+    .brand .sub { display: none; }
+    .btn { padding: 8px 13px; font-size: 13px; }
+    .modal { max-height: 92vh; }
+    .modal .m-body { padding: 16px; }
+    .form-grid { grid-template-columns: 1fr 1fr; gap: 10px; }
+    .form-grid .fcell.word, .form-grid .fbtns { grid-column: 1 / -1; }
+    .form-grid .fbtns .btn { flex: 1; justify-content: center; }
+    .search-box { max-width: none; }
+  }
+</style>
+</head>
+<body>
+  <div class="topbar">
+    <div class="brand">
+      <div class="mark">G</div>
+      <div>
+        <h1>GeekIME 管理台</h1>
+        <div class="sub">小狼毫 · 双拼配置中心</div>
+      </div>
+    </div>
+    <div class="right">
+      <span id="status">就绪</span>
+      <a class="btn ghost small" href="/api/export">导出配置</a>
+      <label class="btn ghost small" style="cursor:pointer">导入配置<input type="file" id="configFile" accept=".zip" style="display:none" onchange="importConfig()"></label>
+      <button class="btn primary small" id="btnDeploy" onclick="doDeploy()">重新部署</button>
+    </div>
+  </div>
+
+  <div class="tabs">
+    <div class="tab active" role="button" tabindex="0" data-tab="phrases" onclick="switchTab('phrases')">自定义短语</div>
+    <div class="tab" role="button" tabindex="0" data-tab="schemas" onclick="switchTab('schemas')">双拼方案</div>
+    <div class="tab" role="button" tabindex="0" data-tab="dicts" onclick="switchTab('dicts')">词库</div>
+    <div class="tab" role="button" tabindex="0" data-tab="ai" onclick="switchTab('ai')">AI 助手</div>
+  </div>
+
+  <div class="wrap">
+    <!-- 短语 -->
+    <div class="panel active" id="panel-phrases">
+      <div class="card">
+        <h2><span class="dot"></span><span id="phFormTitle">新增短语</span><span class="pill">保存后自动部署</span></h2>
+        <div class="form-grid">
+          <div class="fcell word">
+            <label class="flabel" for="phWord">词组</label>
+            <input id="phWord" placeholder="如 奥黛丽" autocomplete="off" spellcheck="false">
+          </div>
+          <div class="fcell">
+            <label class="flabel" for="phCode">编码</label>
+            <input id="phCode" placeholder="如 adl" autocomplete="off" spellcheck="false">
+          </div>
+          <div class="fcell">
+            <label class="flabel" for="phWeight">权重</label>
+            <div class="stepper">
+              <button type="button" class="st-btn" onclick="stepNum('phWeight',-1)" aria-label="减少权重">−</button>
+              <input id="phWeight" type="number" min="1" step="1" value="1" inputmode="numeric">
+              <button type="button" class="st-btn" onclick="stepNum('phWeight',1)" aria-label="增加权重">+</button>
+            </div>
+          </div>
+          <div class="fcell">
+            <label class="flabel">分组</label>
+            <div class="dd" id="ddPh" data-for="phGroup">
+              <button type="button" class="dd-btn" onclick="toggleDD('ddPh')"><span id="ddPhTxt">自动分组</span><i class="caret"></i></button>
+              <div class="dd-menu" id="ddPhMenu"></div>
+              <input type="hidden" id="phGroup" value="">
+            </div>
+          </div>
+          <div class="fcell fbtns">
+            <button class="btn primary" id="btnPhSave" onclick="savePhrase()">保存</button>
+          </div>
+        </div>
+        <div class="fcell" style="margin-top:12px">
+          <label class="flabel" for="phNote">解释说明（选填，只在本管理台里备注，不会写进输入法）</label>
+          <input id="phNote" placeholder="比如：这个词组是干什么用的 / 什么时候打" autocomplete="off" spellcheck="false" style="width:100%">
+        </div>
+        <div class="hint">编码用拼音首字母 / 缩写码。分组选「自动」会按内容归类（邮箱网址、号码、数字、长句、常用），也可以在右侧自建分组。以 # 开头的词组会被 Rime 当成注释、写进词典也不生效，管理台照常保存但请注意。</div>
+      </div>
+
+      <div class="card">
+        <div class="list-head">
+          <h2><span class="dot"></span>短语库<span class="count-badge" id="phCount">0</span></h2>
+          <div class="search-box"><input id="phSearch" placeholder="搜索词组或编码…" oninput="queueRender()" autocomplete="off"></div>
+        </div>
+        <div class="chips" id="groupChips"></div>
+        <div class="toolbar">
+          <button class="btn primary small" onclick="openGroupManager()">分组管理</button>
+          <button class="btn ghost small" onclick="autoGroup()">自动分组</button>
+          <label class="btn ghost small" style="cursor:pointer">批量导入<input type="file" id="phraseFile" accept=".txt" style="display:none" onchange="batchImport()"></label>
+          <a class="btn ghost small" href="/api/phrases/export">导出短语</a>
+          <button class="btn ghost small" id="btnSync" onclick="doSync()">同步网盘</button>
+          <span class="spacer"></span>
+          <button class="btn danger small" id="btnBatchDel" onclick="batchDelete()" disabled>删除选中</button>
+        </div>
+        <div class="table-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th style="width:40px"><input type="checkbox" id="chkAll" onchange="toggleAll(this.checked)"></th>
+              <th>词组</th><th style="width:110px">编码</th><th style="width:70px">权重</th>
+              <th style="width:110px">分组</th><th style="width:170px">备注</th><th style="width:150px">操作</th>
+            </tr>
+          </thead>
+          <tbody id="phList"></tbody>
+        </table>
+        </div>
+        <div class="empty" id="phEmpty" style="display:none">没有匹配的短语</div>
+        <div class="deploy-line" id="deployLine"><span class="spin"></span><span id="deployText">正在无头部署…</span></div>
+        <div class="deploy-line" id="syncLine"><span class="spin"></span><span id="syncText">正在同步到网盘…</span></div>
+      </div>
+    </div>
+
+    <!-- 方案 -->
+    <div class="panel" id="panel-schemas">
+      <div class="card">
+        <h2><span class="dot"></span>双拼方案</h2>
+        <div class="toolbar">
+          <button class="btn primary small" onclick="openCreate(null)">自创方案</button>
+          <button class="btn small" onclick="saveSchemas()">保存启用</button>
+          <span class="muted">开关控制启用；每套方案可复制、设置键位、删除。</span>
+        </div>
+        <div class="grid" id="schemaList"></div>
+      </div>
+    </div>
+
+    <!-- 词库 -->
+    <div class="panel" id="panel-dicts">
+      <div class="card">
+        <h2><span class="dot"></span>导入词库</h2>
+        <div class="form-row">
+          <input type="file" id="dictFile" accept=".dict.yaml">
+          <button class="btn primary" onclick="importDict()">导入</button>
+        </div>
+        <div class="hint">支持 Rime 词典文件（.dict.yaml）。导入后重新部署生效。</div>
+      </div>
+      <div class="card">
+        <h2><span class="dot"></span>现有词库</h2>
+        <div class="table-scroll">
+        <table>
+          <thead><tr><th>文件名</th><th>大小</th><th style="width:100px">操作</th></tr></thead>
+          <tbody id="dictList"></tbody>
+        </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- AI 助手 -->
+    <div class="panel" id="panel-ai">
+      <div class="card">
+        <h2><span class="dot"></span>AI 剪贴板问答<span class="pill" id="aiStatePill">未启用</span></h2>
+        <label class="switch-row" for="aiEnabled">
+          <input type="checkbox" id="aiEnabled" style="width:18px;height:18px;accent-color:var(--accent)">
+          <span>开启监听：复制任何内容 → 自动问 AI → 答案写回剪贴板</span>
+        </label>
+        <div class="hint">开启后极客管家常驻监听剪贴板；也可随时在托盘菜单里切换开关或点「立即问 AI」。</div>
+        <div class="grid-2">
+          <div class="fcell">
+            <label class="flabel" for="aiBase">API 地址</label>
+            <input id="aiBase" placeholder="https://api.xxx.com（兼容 OpenAI 格式，自动补 /v1/chat/completions）">
+          </div>
+          <div class="fcell">
+            <label class="flabel" for="aiModel">模型</label>
+            <input id="aiModel" placeholder="如 gpt-4o-mini / deepseek-chat">
+          </div>
+        </div>
+        <div class="grid-2">
+          <div class="fcell">
+            <label class="flabel" for="aiKey">API Key</label>
+            <input type="password" id="aiKey" placeholder="sk-…">
+          </div>
+          <div class="fcell">
+            <label class="flabel" for="aiPrompt">系统提示词</label>
+            <input id="aiPrompt" placeholder="AI 的角色设定，留空使用默认">
+          </div>
+        </div>
+        <div class="toolbar" style="margin:14px 0 0">
+          <button class="btn primary" onclick="saveAi()">保存配置</button>
+          <button class="btn ghost" onclick="testAi(event)">测试连通</button>
+          <span class="hint" id="aiTestResult" style="display:none;margin:0"></span>
+        </div>
+      </div>
+      <div class="card">
+        <h2><span class="dot"></span>短语库检索<span class="pill" id="aiSearchPill" style="display:none">0 条</span></h2>
+        <div class="form-row" style="margin-bottom:0">
+          <input id="aiSearch" placeholder="输入关键词 / 拼音首字母，模糊匹配整个短语库…" autocomplete="off" oninput="queueAiSearch()">
+          <button class="btn ghost" onclick="runAiSearch()">检索</button>
+        </div>
+        <div class="hint">支持完全匹配、前缀、包含、子序列（czt 可命中 曹泽桐）以及备注内容。AI 助手查询短语库也走这套接口。</div>
+        <div class="search-result" id="aiSearchList"></div>
+      </div>
+      <div class="card">
+        <h2><span class="dot"></span>最近问答</h2>
+        <div class="toolbar">
+          <button class="btn small" onclick="loadAiHistory()">刷新</button>
+          <span class="muted">问答记录保存在 ai_history.log（答案会自动写回剪贴板）</span>
+        </div>
+        <div id="aiHistory" class="ai-hist">（暂无记录）</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 方案创建/复制弹窗 -->
+  <div class="modal-mask" id="modalCreate">
+    <div class="modal">
+      <div class="m-head"><h3 id="createTitle">自创方案</h3><button class="x" onclick="closeModal('modalCreate')">✕</button></div>
+      <div class="m-body">
+        <div class="field"><label>方案 ID（英文，唯一）</label><input id="cId" placeholder="如 double_pinyin_my"></div>
+        <div class="field"><label>方案名称</label><input id="cName" placeholder="如 我的双拼"></div>
+        <div class="field"><label>复制自（可选，复制其键位规则）</label>
+          <select id="cCopy"><option value="">—— 不复制（空白方案）——</option></select>
+        </div>
+      </div>
+      <div class="m-foot">
+        <button class="btn" onclick="closeModal('modalCreate')">取消</button>
+        <button class="btn primary" onclick="createSchema()">创建</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 方案键位设置弹窗 -->
+  <div class="modal-mask" id="modalEdit">
+    <div class="modal modal-wide">
+      <div class="m-head"><h3>键位设置</h3><button class="x" onclick="closeModal('modalEdit')">✕</button></div>
+      <div class="m-body">
+        <div class="field"><label>方案名称</label><input id="eName"></div>
+
+        <div class="sec-title">键盘总览</div>
+        <div class="sec-note">每个按键上列出了它负责的拼音，橙色字表示有专属映射（打双拼时按下该键）。</div>
+        <div class="keyboard" id="kbGrid"></div>
+
+        <div class="sec-title">声母 → 按键</div>
+        <div class="sec-note">只列出需要换键的声母（如 zh、ch、sh）；b p m f d t n l 等仍然直接按原字母键。</div>
+        <div class="map-wrap"><table class="map-table"><tbody id="kbInitials"></tbody></table></div>
+
+        <div class="sec-title">韵母 → 按键</div>
+        <div class="sec-note">双拼 = 声母键 + 韵母键。选下拉框即可换键，例如把「ai」从 L 换到别的键。</div>
+        <div class="map-wrap"><table class="map-table"><tbody id="kbFinals"></tbody></table></div>
+
+        <div class="sec-title">零声母（a、o、e 开头的音节）</div>
+        <div class="sec-note">这类音节没有声母，双拼用两个键输入，如「啊」输入 <b>oa</b>。可修改第一个输入键。</div>
+        <div class="map-wrap"><table class="map-table"><tbody id="kbZeros"></tbody></table></div>
+
+        <details class="adv">
+          <summary>高级设置：直接编辑底层键位规则（一般不需要动）</summary>
+          <textarea id="eRaw" rows="10" spellcheck="false"></textarea>
+          <div class="row">
+            <button class="btn small ghost" onclick="applyRaw()">解析并应用到上方表</button>
+            <button class="btn small ghost" onclick="addRawRule()">+ 添加一条规则</button>
+          </div>
+        </details>
+      </div>
+      <div class="m-foot">
+        <button class="btn" onclick="closeModal('modalEdit')">取消</button>
+        <button class="btn primary" onclick="saveSchemaDetail()">保存</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 短语编辑弹窗 -->
+  <div class="modal-mask" id="modalPhrase">
+    <div class="modal">
+      <div class="m-head"><h3>编辑短语</h3><button class="x" onclick="closeModal('modalPhrase')">✕</button></div>
+      <div class="m-body">
+        <div class="field"><label>词组</label><input id="eWord" autocomplete="off"></div>
+        <div class="field"><label>编码</label><input id="eCode" autocomplete="off"></div>
+        <div class="field"><label>权重（数字越大越靠前）</label>
+          <div class="stepper">
+            <button type="button" class="st-btn" onclick="stepNum('eWeight',-1)" aria-label="减少权重">−</button>
+            <input id="eWeight" type="number" min="1" step="1" inputmode="numeric">
+            <button type="button" class="st-btn" onclick="stepNum('eWeight',1)" aria-label="增加权重">+</button>
+          </div>
+        </div>
+        <div class="field"><label>分组</label>
+          <div class="dd" id="ddEG" data-for="eGroup">
+            <button type="button" class="dd-btn" onclick="toggleDD('ddEG')"><span id="ddEGTxt">常用</span><i class="caret"></i></button>
+            <div class="dd-menu" id="ddEGMenu"></div>
+            <input type="hidden" id="eGroup" value="">
+          </div>
+        </div>
+        <div class="field"><label>解释说明（选填，仅备注，不会写进输入法）</label>
+          <textarea id="eNote" rows="3" placeholder="这个词组是干什么用的 / 什么时候打" style="width:100%;resize:vertical"></textarea>
+        </div>
+      </div>
+      <div class="m-foot">
+        <button class="btn" onclick="closeModal('modalPhrase')">取消</button>
+        <button class="btn primary" onclick="saveEditPhrase()">保存并部署</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 分组管理弹窗 -->
+  <div class="modal-mask" id="modalGroups">
+    <div class="modal">
+      <div class="m-head"><h3>分组管理</h3><button class="x" onclick="closeModal('modalGroups')">✕</button></div>
+      <div class="m-body">
+        <div class="field"><label>新建分组</label>
+          <div style="display:flex;gap:8px">
+            <input id="newGroupName" placeholder="如 工作 / 地址 / 代码片段" autocomplete="off">
+            <button class="btn primary" onclick="createGroup()">新建</button>
+          </div>
+        </div>
+        <div class="sec-note">重命名会同步改掉该组所有短语；删除分组时里面的短语会移到第一个分组，不会丢。</div>
+        <div id="groupList"></div>
+      </div>
+      <div class="m-foot"><button class="btn primary" onclick="closeModal('modalGroups')">完成</button></div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+<script>
+  let phrases = [];
+  let groups = [];
+  let groupStats = {};
+  let activeGroup = '__all__';
+  let selKeys = new Set();
+  let flashKey = null;
+  let renderTimer = null;
+  let editingKey = null;
+  let allSchemas = [];
+  let activeIds = [];
+  let editingSchemaId = null;
+  let rulesText = [];
+
+  function toast(msg) {
+    const t = document.getElementById('toast');
+    t.textContent = msg; t.classList.add('show');
+    clearTimeout(t._t);
+    t._t = setTimeout(() => t.classList.remove('show'), 2600);
+  }
+  function setStatus(msg, busy) {
+    const s = document.getElementById('status');
+    s.textContent = msg; s.classList.toggle('busy', !!busy);
+  }
+  function esc(s) { return String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+
+  function switchTab(name) {
+    document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.tab === name));
+    document.querySelectorAll('.panel').forEach(p => p.classList.toggle('active', p.id === 'panel-' + name));
+    if (name === 'ai') loadAi();
+  }
+
+  // ---------- AI 助手 ----------
+  function setAiPill(on) {
+    const el = document.getElementById('aiStatePill');
+    el.textContent = on ? '监听中' : '未启用';
+    el.style.color = on ? '' : 'var(--muted)';
+    el.style.background = on ? '' : '#f1f2f6';
+  }
+  let _aiLoaded = false;
+  async function loadAi(force) {
+    if (_aiLoaded && !force) return;
+    try {
+      const r = await fetch('/api/ai');
+      const d = await r.json();
+      document.getElementById('aiEnabled').checked = !!d.enabled;
+      document.getElementById('aiBase').value = d.base_url || '';
+      document.getElementById('aiKey').value = d.api_key || '';
+      document.getElementById('aiModel').value = d.model || '';
+      document.getElementById('aiPrompt').value = d.system_prompt || '';
+      setAiPill(!!d.enabled);
+      _aiLoaded = true;
+      loadAiHistory();
+    } catch (e) { }
+  }
+  async function saveAi() {
+    const body = {
+      enabled: document.getElementById('aiEnabled').checked,
+      base_url: document.getElementById('aiBase').value.trim(),
+      api_key: document.getElementById('aiKey').value.trim(),
+      model: document.getElementById('aiModel').value.trim(),
+      system_prompt: document.getElementById('aiPrompt').value.trim()
+    };
+    const r = await fetch('/api/ai', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    const d = await r.json();
+    if (d.ok) setAiPill(body.enabled);
+    showAiResult(d.ok, d.ok ? '已保存 ✓ 管家会立即读取新配置' : '保存失败');
+  }
+  async function testAi(ev) {
+    const btn = (ev && ev.target) || document.activeElement;
+    btn.disabled = true;
+    showAiResult(true, '正在测试连通…');
+    try {
+      const body = {
+        base_url: document.getElementById('aiBase').value.trim(),
+        api_key: document.getElementById('aiKey').value.trim(),
+        model: document.getElementById('aiModel').value.trim()
+      };
+      const r = await fetch('/api/ai/test', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+      const d = await r.json();
+      showAiResult(d.ok, d.ok ? ('连通正常 ✓ AI 回复：' + (d.reply || '(空)')) : ('失败 ✗ ' + (d.error || '')));
+    } catch (e) { showAiResult(false, '失败 ✗ ' + e); }
+    btn.disabled = false;
+  }
+  function showAiResult(ok, msg) {
+    const el = document.getElementById('aiTestResult');
+    el.style.display = 'block';
+    el.style.color = ok ? 'var(--accent)' : 'var(--danger)';
+    el.textContent = msg;
+  }
+  async function loadAiHistory() {
+    try {
+      const r = await fetch('/api/ai/history');
+      const d = await r.json();
+      const el = document.getElementById('aiHistory');
+      el.textContent = d.items && d.items.length ? d.items.join('\n\n') : '（暂无记录）';
+    } catch (e) { }
+  }
+
+  // ---------- 短语库模糊检索（AI 助手与页面共用 /api/phrases/search） ----------
+  let aiSearchTimer = null;
+
+  function queueAiSearch() {
+    clearTimeout(aiSearchTimer);
+    aiSearchTimer = setTimeout(runAiSearch, 200);
+  }
+
+  async function runAiSearch() {
+    clearTimeout(aiSearchTimer);
+    const q = (document.getElementById('aiSearch').value || '').trim();
+    const box = document.getElementById('aiSearchList');
+    const pill = document.getElementById('aiSearchPill');
+    if (!q) { box.innerHTML = ''; pill.style.display = 'none'; return; }
+    try {
+      const r = await fetch('/api/phrases/search?limit=30&q=' + encodeURIComponent(q));
+      const d = await r.json();
+      const items = d.items || [];
+      pill.style.display = 'inline-block';
+      pill.textContent = items.length + ' 条';
+      box.innerHTML = items.length ? items.map(p => `
+        <div class="sr-item">
+          <div class="sr-word">${esc(p.word)}</div>
+          <div class="sr-meta">
+            <span class="tag">${esc(p.code)}</span>
+            <span class="tag">${esc(p.group)}</span>
+            <span>权重 ${esc(p.weight)}</span>
+          </div>
+          ${p.note ? '<div class="sr-note">' + esc(p.note) + '</div>' : ''}
+        </div>`).join('') : '<div class="empty">没有匹配的短语</div>';
+    } catch (e) { box.innerHTML = '<div class="empty">检索失败</div>'; }
+  }
+
+  // ---------- 部署（全后台无头，不弹任何窗口） ----------
+  let deployPolling = false;
+
+  async function doDeploy() {
+    const btn = document.getElementById('btnDeploy');
+    btn.disabled = true;
+    setTimeout(() => { btn.disabled = false; }, 1200);
+    try {
+      await fetch('/api/deploy', { method: 'POST' });
+      watchDeploy(true); watchSync(true);
+    } catch (e) { toast('部署请求出错'); }
+  }
+
+  function setDeployLine(state, text) {
+    const line = document.getElementById('deployLine');
+    line.classList.remove('ok', 'err');
+    if (!state) { line.classList.remove('show'); return; }
+    line.classList.add('show');
+    if (state === 'ok') line.classList.add('ok');
+    if (state === 'err') line.classList.add('err');
+    document.getElementById('deployText').textContent = text;
+  }
+
+  // 轮询部署状态；loud=false 时只在用户主动操作后提示
+  async function watchDeploy(loud) {
+    if (deployPolling) return;
+    deployPolling = true;
+    let seen = false;
+    try {
+      for (let i = 0; i < 900; i++) {
+        const r = await fetch('/api/deploy/status', { cache: 'no-store' });
+        const s = await r.json();
+        if (s.running) {
+          seen = true;
+          setStatus('部署中…', true);
+          setDeployLine('run', '正在无头部署：停服务 → 重建词典 → 重启服务，大约十几秒');
+        } else {
+          if (seen) {
+            if (s.ok) {
+              setStatus('已部署');
+              setDeployLine('ok', '✓ ' + (s.msg || '部署完成，已生效'));
+              if (loud !== false) toast('部署完成，短语已生效');
+            } else if (s.ok === false) {
+              setStatus('部署失败');
+              setDeployLine('err', '✕ ' + (s.msg || '部署失败'));
+              toast('部署失败：' + (s.msg || ''));
+            }
+            setTimeout(() => setDeployLine(null), 5000);
+          }
+          break;
+        }
+        await new Promise(res => setTimeout(res, 1200));
+      }
+    } catch (e) { /* 忽略轮询异常 */ }
+    deployPolling = false;
+  }
+
+  // ---------- 网盘同步（短语库 → AList 里的 Excel） ----------
+  let syncPolling = false;
+
+  function setSyncLine(state, text) {
+    const line = document.getElementById('syncLine');
+    line.classList.remove('ok', 'err');
+    if (!state) { line.classList.remove('show'); return; }
+    line.classList.add('show');
+    if (state === 'ok') line.classList.add('ok');
+    if (state === 'err') line.classList.add('err');
+    document.getElementById('syncText').textContent = text;
+  }
+
+  async function doSync() {
+    const btn = document.getElementById('btnSync');
+    btn.disabled = true;
+    setTimeout(() => { btn.disabled = false; }, 1500);
+    try {
+      await fetch('/api/sync', { method: 'POST' });
+      watchSync(true);
+    } catch (e) { toast('同步请求出错'); }
+  }
+
+  async function watchSync(loud) {
+    if (syncPolling) return;
+    syncPolling = true;
+    let seen = false;
+    try {
+      for (let i = 0; i < 120; i++) {
+        const r = await fetch('/api/sync/status', { cache: 'no-store' });
+        const s = await r.json();
+        if (!s.enabled) { break; }
+        if (s.running) {
+          seen = true;
+          setSyncLine('run', '正在把短语库导出为 Excel 并上传到网盘…');
+        } else {
+          if (seen && s.ok) {
+            setSyncLine('ok', '✓ ' + (s.msg || '已同步到网盘') + '（' + s.target + '）');
+            if (loud !== false) toast('已同步到网盘');
+          } else if (seen && s.ok === false) {
+            setSyncLine('err', '✕ ' + (s.msg || '同步失败'));
+            if (loud !== false) toast('网盘同步失败');
+          }
+          if (seen) setTimeout(() => setSyncLine(null), 6000);
+          break;
+        }
+        await new Promise(res => setTimeout(res, 1500));
+      }
+    } catch (e) { /* 忽略 */ }
+    syncPolling = false;
+  }
+
+  // ---------- 短语 ----------
+  const SEP = '\u0001';
+  const phKey = p => p.word + SEP + p.code;
+  const keyObj = k => { const a = k.split(SEP); return { word: a[0], code: a[1] }; };
+
+  async function loadPhrases() {
+    const r = await fetch('/api/phrases', { cache: 'no-store' });
+    const d = await r.json();
+    phrases = d.items || [];
+    groups = (d.groups || []).slice();
+    // 兜底：任何条目所属分组都要出现在分组栏里，避免「保存了但分组没出现」
+    phrases.forEach(p => { if (p.group && !groups.includes(p.group)) groups.push(p.group); });
+    if (!groups.length) groups.push('常用');
+    groupStats = d.stats || {};
+    document.getElementById('phCount').textContent = d.total || 0;
+    const alive = new Set(phrases.map(phKey));
+    selKeys.forEach(k => { if (!alive.has(k)) selKeys.delete(k); });
+    if (activeGroup !== '__all__' && !groups.includes(activeGroup)) activeGroup = '__all__';
+    renderGroupChips();
+    renderGroupSelects();
+    renderPhrases();
+  }
+
+  function renderGroupChips() {
+    const box = document.getElementById('groupChips');
+    box.innerHTML = '';
+    const add = (name, label, count) => {
+      const el = document.createElement('div');
+      el.className = 'chip' + (activeGroup === name ? ' active' : '');
+      el.innerHTML = esc(label) + '<span class="n">' + count + '</span>';
+      el.onclick = () => { activeGroup = name; renderGroupChips(); renderPhrases(); };
+      box.appendChild(el);
+    };
+    add('__all__', '全部', phrases.length);
+    groups.forEach(g => add(g, g, groupStats[g] || 0));
+  }
+
+  const NEW_GROUP = '__new__';
+
+  // ---------- 自绘下拉（原生 select 弹出层无法改圆角，整套自己画） ----------
+  function renderGroupSelects() {
+    ddRender('phGroup');
+    ddRender('eGroup');
+  }
+
+  function ddRender(forId) {
+    const inp = document.getElementById(forId);
+    const ddId = forId === 'phGroup' ? 'ddPh' : 'ddEG';
+    const txt = document.getElementById(ddId + 'Txt');
+    const menu = document.getElementById(ddId + 'Menu');
+    const allowAuto = forId === 'phGroup';
+    const cur = inp.value;
+    const opts = (allowAuto ? [{ v: '', l: '自动分组' }] : [])
+      .concat(groups.map(g => ({ v: g, l: g })));
+    let html = '';
+    // 当前值不在分组列表里（分组被改名/删除）时补一项，避免按钮上文字空着
+    if (cur && !opts.some(o => o.v === cur)) {
+      html += '<div class="dd-item sel" data-v="' + esc(cur) + '">' + esc(cur) + '</div>';
+    }
+    html += opts.map(o =>
+      '<div class="dd-item' + (o.v === cur ? ' sel' : '') + '" data-v="' + esc(o.v) + '">' + esc(o.l) + '</div>'
+    ).join('');
+    html += '<div class="dd-item dd-new" data-v="' + NEW_GROUP + '">＋ 新建分组…</div>';
+    menu.innerHTML = html;
+    txt.textContent = cur || (allowAuto ? '自动分组' : (groups[0] || '未分组'));
+  }
+
+  function toggleDD(ddId) {
+    const dd = document.getElementById(ddId);
+    const open = !dd.classList.contains('open');
+    document.querySelectorAll('.dd.open').forEach(x => x.classList.remove('open'));
+    if (open) {
+      ddRender(dd.dataset.for);
+      dd.classList.add('open');
+    }
+  }
+
+  // 选「＋ 新建分组」→ 就地建组并选中，不用滚回顶部
+  async function pickDD(forId) {
+    const name = (prompt('新分组名称：') || '').trim();
+    if (!name) return;
+    if (!groups.includes(name)) {
+      const r = await fetch('/api/phrases/groups', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name })
+      });
+      const j = await r.json();
+      if (!r.ok) { toast(j.error || '新建分组失败'); return; }
+      groups = j.groups || groups.concat(name);
+      renderGroupChips();
+      toast('已新建分组「' + name + '」');
+    }
+    document.getElementById(forId).value = name;
+    ddRender(forId);
+  }
+
+  function stepNum(id, delta) {
+    const el = document.getElementById(id);
+    const n = Math.max(1, (parseInt(el.value, 10) || 1) + delta);
+    el.value = n;
+  }
+
+  function visiblePhrases() {
+    const q = (document.getElementById('phSearch').value || '').trim().toLowerCase();
+    return phrases.filter(p => (activeGroup === '__all__' || p.group === activeGroup) &&
+      (!q || p.word.toLowerCase().includes(q) || p.code.toLowerCase().includes(q)));
+  }
+
+  function renderPhrases() {
+    const list = visiblePhrases();
+    const tbody = document.getElementById('phList');
+    const frag = document.createDocumentFragment();
+    list.forEach(p => {
+      const k = phKey(p);
+      const tr = document.createElement('tr');
+      if (k === flashKey) tr.className = 'flash';
+      tr.innerHTML = `
+        <td><input type="checkbox" class="chk"${selKeys.has(k) ? ' checked' : ''}></td>
+        <td class="word-cell">${esc(p.word)}</td>
+        <td><span style="font-family:Consolas,Monaco,monospace;font-size:12.5px;color:#5b6170">${esc(p.code)}</span></td>
+        <td>${esc(p.weight)}</td>
+        <td><span class="tag">${esc(p.group)}</span></td>
+        <td class="note-cell" title="${esc(p.note || '')}">${esc(p.note || '—')}</td>
+        <td><div class="ops">
+          <button class="btn small ghost">编辑</button>
+          <button class="btn small danger">删除</button>
+        </div></td>`;
+      tr.querySelector('.chk').onchange = e => {
+        if (e.target.checked) selKeys.add(k); else selKeys.delete(k);
+        syncBatchBtn();
+      };
+      const btns = tr.querySelectorAll('.ops button');
+      btns[0].onclick = () => editPhrase(k);
+      btns[1].onclick = () => delPhrase(k);
+      frag.appendChild(tr);
+    });
+    tbody.innerHTML = '';
+    tbody.appendChild(frag);
+    document.getElementById('phEmpty').style.display = list.length ? 'none' : 'block';
+    document.getElementById('chkAll').checked = list.length > 0 && list.every(p => selKeys.has(phKey(p)));
+    syncBatchBtn();
+    if (flashKey) {
+      const row = tbody.querySelector('tr.flash');
+      if (row) row.scrollIntoView({ block: 'center', behavior: 'smooth' });
+      flashKey = null;
+    }
+  }
+
+  function syncBatchBtn() {
+    const btn = document.getElementById('btnBatchDel');
+    btn.disabled = selKeys.size === 0;
+    btn.textContent = selKeys.size ? ('删除选中 (' + selKeys.size + ')') : '删除选中';
+  }
+
+  // 搜索框输入防抖，避免每敲一个字就整表重绘
+  function queueRender() {
+    clearTimeout(renderTimer);
+    renderTimer = setTimeout(renderPhrases, 120);
+  }
+
+  function toggleAll(checked) {
+    visiblePhrases().forEach(p => {
+      const k = phKey(p);
+      if (checked) selKeys.add(k); else selKeys.delete(k);
+    });
+    renderPhrases();
+  }
+
+  async function savePhrase() {
+    const word = document.getElementById('phWord').value.trim();
+    const code = document.getElementById('phCode').value.trim();
+    const weight = document.getElementById('phWeight').value.trim() || '1';
+    const group = document.getElementById('phGroup').value;
+    const note = document.getElementById('phNote').value.trim();
+    if (!word || !code) { toast('词组和编码都要填写'); return; }
+    if (!/^[a-z;]+$/i.test(code)) { toast('编码建议用字母（拼音首字母 / 缩写码）'); }
+    const r = await fetch('/api/phrases', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ word, code, weight, group, note })
+    });
+    const j = await r.json();
+    if (!r.ok) { toast(j.error || '保存失败'); return; }
+    document.getElementById('phWord').value = '';
+    document.getElementById('phCode').value = '';
+    document.getElementById('phWeight').value = '1';
+    document.getElementById('phNote').value = '';
+    document.getElementById('phWord').focus();
+    // 保存后把视图切到这条短语所在的分组，并高亮它，避免「保存了但看不到分组」
+    const savedGroup = (j.item && j.item.group) || group;
+    if (savedGroup) document.getElementById('phGroup').value = savedGroup;
+    document.getElementById('phSearch').value = '';
+    activeGroup = savedGroup || '__all__';
+    flashKey = word + SEP + code;
+    toast('「' + word + '」已保存到「' + savedGroup + '」，正在自动部署…');
+    await loadPhrases();
+    watchDeploy(true); watchSync(true);
+  }
+
+  function editPhrase(k) {
+    const p = phrases.find(x => phKey(x) === k);
+    if (!p) return;
+    editingKey = k;
+    document.getElementById('eWord').value = p.word;
+    document.getElementById('eCode').value = p.code;
+    document.getElementById('eWeight').value = parseInt(p.weight, 10) || 1;
+    document.getElementById('eNote').value = p.note || '';
+    document.getElementById('eGroup').value = p.group;
+    ddRender('eGroup');
+    document.getElementById('modalPhrase').classList.add('show');
+    document.getElementById('eWord').focus();
+  }
+
+  async function saveEditPhrase() {
+    if (!editingKey) return;
+    const item = {
+      word: document.getElementById('eWord').value.trim(),
+      code: document.getElementById('eCode').value.trim(),
+      weight: document.getElementById('eWeight').value.trim() || '1',
+      group: document.getElementById('eGroup').value,
+      note: document.getElementById('eNote').value.trim()
+    };
+    if (!item.word || !item.code) { toast('词组和编码都要填写'); return; }
+    const r = await fetch('/api/phrases', {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ key: keyObj(editingKey), item })
+    });
+    const j = await r.json();
+    if (!r.ok) { toast(j.error || '保存失败'); return; }
+    closeModal('modalPhrase');
+    const saved = j.item || item;
+    activeGroup = saved.group || '__all__';
+    document.getElementById('phSearch').value = '';
+    flashKey = saved.word + SEP + saved.code;
+    toast('已更新，正在自动部署…');
+    await loadPhrases();
+    watchDeploy(true); watchSync(true);
+  }
+
+  async function delPhrase(k) {
+    const p = phrases.find(x => phKey(x) === k);
+    if (!p) return;
+    if (!confirm('删除「' + p.word + '」(' + p.code + ')？')) return;
+    await fetch('/api/phrases', {
+      method: 'DELETE', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ key: { word: p.word, code: p.code } })
+    });
+    selKeys.delete(k);
+    toast('已删除，正在自动部署…');
+    await loadPhrases();
+    watchDeploy(true); watchSync(true);
+  }
+
+  async function batchDelete() {
+    const keys = [...selKeys].map(keyObj);
+    if (!keys.length) return;
+    if (!confirm('删除选中的 ' + keys.length + ' 条短语？')) return;
+    const r = await fetch('/api/phrases/batch-delete', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ keys })
+    });
+    const j = await r.json();
+    selKeys.clear();
+    toast('已删除 ' + (j.removed || 0) + ' 条，正在自动部署…');
+    await loadPhrases();
+    watchDeploy(true); watchSync(true);
+  }
+
+  async function batchImport() {
+    const el = document.getElementById('phraseFile');
+    const f = el.files[0];
+    if (!f) return;
+    const fd = new FormData();
+    fd.append('file', f);
+    const grp = document.getElementById('phGroup').value;
+    if (grp) fd.append('group', grp);
+    const r = await fetch('/api/phrases/batch-import', { method: 'POST', body: fd });
+    const j = await r.json();
+    el.value = '';
+    if (r.ok) {
+      toast('导入完成：新增 ' + j.added + '，跳过 ' + j.skipped + '，正在自动部署…');
+      await loadPhrases();
+      watchDeploy(true); watchSync(true);
+    } else toast('导入失败: ' + (j.error || '未知'));
+  }
+
+  // ---------- 分组管理 ----------
+  function openGroupManager() {
+    renderGroupList();
+    document.getElementById('modalGroups').classList.add('show');
+  }
+
+  function renderGroupList() {
+    const box = document.getElementById('groupList');
+    box.innerHTML = '';
+    groups.forEach(g => {
+      const row = document.createElement('div');
+      row.className = 'g-row';
+      const name = document.createElement('div');
+      name.className = 'gname';
+      name.textContent = g;
+      const cnt = document.createElement('div');
+      cnt.className = 'gcount';
+      cnt.textContent = (groupStats[g] || 0) + ' 条';
+      const ren = document.createElement('button');
+      ren.className = 'btn small ghost';
+      ren.textContent = '重命名';
+      ren.onclick = () => renameGroup(g);
+      const del = document.createElement('button');
+      del.className = 'btn small danger';
+      del.textContent = '删除';
+      del.onclick = () => deleteGroup(g);
+      row.append(name, cnt, ren, del);
+      box.appendChild(row);
+    });
+  }
+
+  async function createGroup() {
+    const input = document.getElementById('newGroupName');
+    const name = input.value.trim();
+    if (!name) { toast('请输入分组名'); input.focus(); return; }
+    const r = await fetch('/api/phrases/groups', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name })
+    });
+    const j = await r.json();
+    if (!r.ok) { toast(j.error || '创建失败'); return; }
+    input.value = '';
+    await loadPhrases();
+    renderGroupList();
+    toast('分组「' + name + '」已创建');
+  }
+
+  async function renameGroup(g) {
+    const name = prompt('新的分组名', g);
+    if (name === null) return;
+    const to = name.trim();
+    if (!to || to === g) return;
+    const r = await fetch('/api/phrases/groups', {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ from: g, to })
+    });
+    const j = await r.json();
+    if (!r.ok) { toast(j.error || '重命名失败'); return; }
+    if (activeGroup === g) activeGroup = to;
+    await loadPhrases();
+    renderGroupList();
+    toast('已重命名为「' + to + '」');
+  }
+
+  async function deleteGroup(g) {
+    if (!confirm('删除分组「' + g + '」？组内 ' + (groupStats[g] || 0) + ' 条短语会移到第一个分组。')) return;
+    const r = await fetch('/api/phrases/groups', {
+      method: 'DELETE', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: g })
+    });
+    const j = await r.json();
+    if (!r.ok) { toast(j.error || '删除失败'); return; }
+    if (activeGroup === g) activeGroup = '__all__';
+    await loadPhrases();
+    renderGroupList();
+    toast('分组已删除，短语已移到「' + j.moved_to + '」');
+    watchDeploy(true); watchSync(true);
+  }
+
+  async function autoGroup() {
+    if (!confirm('按内容自动归类所有短语？（邮箱、号码、数字、长句、常用）\n你自建的分组名不会丢，但组内条目会被重新归类。')) return;
+    const r = await fetch('/api/phrases/auto-group', { method: 'POST' });
+    const j = await r.json();
+    if (!r.ok) { toast(j.error || '自动分组失败'); return; }
+    await loadPhrases();
+    toast('自动分组完成：' + j.changed + ' 条被重新归类，正在自动部署…');
+    watchDeploy(true); watchSync(true);
+  }
+
+  // ---------- 方案 ----------
+  async function loadSchemas() {
+    const r = await fetch('/api/schemas');
+    const j = await r.json();
+    allSchemas = j.schemas;
+    activeIds = j.active || [];
+    renderSchemas();
+    renderCopyOptions();
+  }
+  function renderSchemas() {
+    const wrap = document.getElementById('schemaList');
+    wrap.innerHTML = '';
+    allSchemas.forEach(s => {
+      const isBuiltin = !s.file;
+      const active = activeIds.includes(s.id);
+      const div = document.createElement('div');
+      div.className = 'scard' + (active ? ' active-card' : '');
+      div.innerHTML = `
+        <div class="head">
+          <div>
+            <div class="name">${esc(s.name)}${active ? '<span class="badge">使用中</span>' : ''}</div>
+            <div class="id">${esc(s.id)}${isBuiltin ? ' · 内置' : ''}</div>
+          </div>
+          <label class="switch"><input type="checkbox" ${active ? 'checked' : ''} onchange="toggleActive('${esc(s.id)}', this.checked)"><span class="track"></span>启用</label>
+        </div>
+        <div class="foot">
+          ${isBuiltin ? '' : `<button class="btn small ghost" onclick="openEdit('${esc(s.id)}')">键位设置</button>`}
+          ${isBuiltin ? '' : `<button class="btn small ghost" onclick="openCreate('${esc(s.id)}')">复制</button>`}
+          ${isBuiltin ? '' : `<button class="btn small danger" onclick="delSchema('${esc(s.id)}')">删除</button>`}
+        </div>`;
+      wrap.appendChild(div);
+    });
+  }
+  function renderCopyOptions() {
+    const sel = document.getElementById('cCopy');
+    sel.innerHTML = '<option value="">—— 不复制（空白方案）——</option>';
+    allSchemas.forEach(s => {
+      if (s.file) {
+        const o = document.createElement('option');
+        o.value = s.id; o.textContent = s.name + ' (' + s.id + ')';
+        sel.appendChild(o);
+      }
+    });
+  }
+  function toggleActive(id, checked) {
+    if (checked) { if (!activeIds.includes(id)) activeIds.push(id); }
+    else activeIds = activeIds.filter(x => x !== id);
+    renderSchemas();
+  }
+  async function saveSchemas() {
+    if (activeIds.length === 0) { toast('至少启用一个方案'); return; }
+    await fetch('/api/schemas/active', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ids: activeIds}) });
+    toast('方案已保存，正在自动部署…');
+    watchDeploy(true); watchSync(true);
+  }
+  function openCreate(copyFrom) {
+    document.getElementById('createTitle').textContent = copyFrom ? '复制方案' : '自创方案';
+    document.getElementById('cId').value = '';
+    document.getElementById('cName').value = '';
+    document.getElementById('cCopy').value = copyFrom || '';
+    document.getElementById('modalCreate').classList.add('show');
+  }
+  async function createSchema() {
+    const id = document.getElementById('cId').value.trim();
+    const name = document.getElementById('cName').value.trim();
+    const copy_from = document.getElementById('cCopy').value;
+    if (!id) { toast('请填写方案 ID'); return; }
+    const r = await fetch('/api/schemas/create', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({id, name, copy_from}) });
+    const j = await r.json();
+    if (r.ok) { toast('方案已创建'); closeModal('modalCreate'); loadSchemas(); }
+    else toast('创建失败: ' + (j.error || '未知'));
+  }
+  async function openEdit(sid) {
+    const r = await fetch('/api/schemas/' + sid);
+    const j = await r.json();
+    if (!r.ok) { toast(j.error || '读取失败'); return; }
+    editingSchemaId = sid;
+    rulesText = (j.algebra || []).map(s => String(s).trim()).filter(Boolean);
+    document.getElementById('eName').value = j.name;
+    renderEditView();
+    document.getElementById('modalEdit').classList.add('show');
+  }
+
+  // ---------- 键位规则解析（xform/derive → 人话表） ----------
+  const KEY_LIST = ('abcdefghijklmnopqrstuvwxyz;').split('');
+  function keyOptions(sel) {
+    return KEY_LIST.map(k => `<option value="${k}"${k === sel ? ' selected' : ''}>${k.toUpperCase()}</option>`).join('');
+  }
+  // 把正则式韵母展开成可读拼音：(ia|ua)→[ia,ua]、[uv]e→[ue,ve]、i?ong→[ong,iong]
+  function expandPattern(p) {
+    let list = [p];
+    for (let guard = 0; guard < 12; guard++) {
+      const next = [];
+      let expanded = false;
+      for (const s of list) {
+        const cls = s.match(/\[([a-z]+)\]/);
+        const alt = s.match(/\(([^()]+)\)/);
+        const opt = s.match(/([a-z])\?/);
+        const pos = [cls && cls.index, alt && alt.index, opt && opt.index].filter(x => x != null).sort((a, b) => a - b)[0];
+        if (pos == null) { next.push(s); continue; }
+        expanded = true;
+        if (pos === (cls ? cls.index : -1)) {
+          for (const ch of cls[1]) next.push(s.slice(0, cls.index) + ch + s.slice(cls.index + cls[0].length));
+        } else if (pos === (alt ? alt.index : -1)) {
+          for (const a of alt[1].split('|')) next.push(s.slice(0, alt.index) + a + s.slice(alt.index + alt[0].length));
+        } else {
+          next.push(s.slice(0, opt.index) + opt[1] + s.slice(opt.index + opt[0].length));
+          next.push(s.slice(0, opt.index) + s.slice(opt.index + opt[0].length));
+        }
+      }
+      list = next;
+      if (!expanded) break;
+    }
+    return [...new Set(list)].sort();
+  }
+  function parseRules(lines) {
+    return lines.map((raw, idx) => {
+      const parts = raw.split('/');
+      const op = parts[0], lhs = parts[1], rhs = parts[2] || '';
+      const it = { idx, kind: 'raw' };
+      if (op === 'derive' && /^\^[a-z]+\$$/.test(lhs) && /^[a-z]{1,2}$/.test(rhs)) {
+        it.kind = 'zero'; it.syl = lhs.slice(1, -1); it.code = rhs;
+      } else if (op === 'xform' && lhs.startsWith('^(.)') && lhs.endsWith('$') && /^\$1[a-z;]$/.test(rhs)) {
+        it.kind = 'final'; it.pattern = lhs.slice(4, -1); it.key = rhs.slice(2);
+      } else {
+        const m = lhs && (lhs.match(/^\^([a-z]+)\$$/) || lhs.match(/^\^([a-z]+)$/));
+        if (op === 'xform' && m && /^[a-z;]$/.test(rhs)) {
+          it.kind = 'initial'; it.value = m[1]; it.key = rhs;
+        }
+      }
+      return it;
+    });
+  }
+  // 韵母换键后，零声母两键码的第二键自动跟随（如 ai→x 后 「啊ai」的键码 o+l 变 o+x）
+  function syncZeroCodes() {
+    const items = parseRules(rulesText);
+    const finalMap = {};
+    items.filter(i => i.kind === 'final').forEach(i => expandPattern(i.pattern).forEach(f => finalMap[f] = i.key));
+    items.filter(i => i.kind === 'zero').forEach(i => {
+      const want = i.code[0] + (finalMap[i.syl] || i.syl);
+      if (i.code !== want) rulesText[i.idx] = `derive/^${i.syl}$/${want}/`;
+    });
+  }
+  function renderEditView() {
+    syncZeroCodes();
+    const items = parseRules(rulesText);
+    const initials = items.filter(i => i.kind === 'initial');
+    const finals = items.filter(i => i.kind === 'final');
+    const zeros = items.filter(i => i.kind === 'zero');
+    document.getElementById('kbInitials').innerHTML = initials.map(i =>
+      `<tr><td class="py">声母 ${i.value}</td><td>按下 <select onchange="setKey('initial',${i.idx},this.value)">${keyOptions(i.key)}</select></td></tr>`
+    ).join('') || '<tr><td class="muted">该方案没有需要换键的声母</td></tr>';
+    document.getElementById('kbFinals').innerHTML = finals.map(i =>
+      `<tr><td class="py">${expandPattern(i.pattern).join('、')}</td><td>按下 <select onchange="setKey('final',${i.idx},this.value)">${keyOptions(i.key)}</select></td></tr>`
+    ).join('') || '<tr><td class="muted">该方案没有韵母映射</td></tr>';
+    document.getElementById('kbZeros').innerHTML = zeros.map(i =>
+      `<tr><td class="py">${i.syl}</td><td>先按 <select onchange="setZeroPrefix(${i.idx},this.value)">${keyOptions(i.code[0])}</select>，再按 <b>${(i.code[1] || '').toUpperCase()}</b>（跟随上方韵母键）</td></tr>`
+    ).join('') || '<tr><td class="muted">该方案未定义零声母</td></tr>';
+    renderKeyboard(items);
+    document.getElementById('eRaw').value = rulesText.join('\n');
+  }
+  const KB_ROWS = ['qwertyuiop', 'asdfghjkl;', 'zxcvbnm'];
+  function renderKeyboard(items) {
+    const map = {};
+    const add = (k, txt) => { (map[k] = map[k] || []).push(txt); };
+    items.forEach(i => {
+      if (i.kind === 'initial') add(i.key, i.value);
+      else if (i.kind === 'final') expandPattern(i.pattern).forEach(f => add(i.key, f));
+      else if (i.kind === 'zero') add(i.code[0], '零' + i.syl);
+    });
+    document.getElementById('kbGrid').innerHTML = KB_ROWS.map(row =>
+      '<div class="kb-row">' + row.split('').map(k => {
+        const labels = map[k] || [];
+        return `<div class="kbkey${labels.length ? '' : ' empty'}" title="${k.toUpperCase()}：${labels.join('、') || '无专属映射（直接按本字母）'}"><div class="k">${k.toUpperCase()}</div><div class="v">${labels.join(' ') || '—'}</div></div>`;
+      }).join('') + '</div>'
+    ).join('');
+  }
+  function setKey(kind, idx, val) {
+    const it = parseRules(rulesText).find(i => i.idx === idx);
+    if (!it) return;
+    if (kind === 'final') rulesText[it.idx] = `xform/^(.)${it.pattern}$/$1${val}/`;
+    else rulesText[it.idx] = `xform/^${it.value}/${val}/`;
+    renderEditView();
+  }
+  function setZeroPrefix(idx, val) {
+    const it = parseRules(rulesText).find(i => i.idx === idx);
+    if (!it) return;
+    rulesText[it.idx] = `derive/^${it.syl}$/${val}${it.code[1]}/`;
+    renderEditView();
+  }
+  function applyRaw(quiet) {
+    rulesText = document.getElementById('eRaw').value.split('\n')
+      .map(s => s.trim())
+      .filter(s => /^(xform|derive)\/[^/]+\/[^/]+\/$/.test(s));
+    renderEditView();
+    if (!quiet) toast('已解析并应用');
+  }
+  function addRawRule() {
+    document.getElementById('eRaw').value = rulesText.join('\n') + (rulesText.length ? '\n' : '') + 'xform/^(.)ai$/$1l/';
+    toast('已追加一条示例规则，改成需要的再点「解析并应用」');
+  }
+  async function saveSchemaDetail() {
+    applyRaw(true); // 以高级文本框为准做一次同步，防止两边不一致
+    const name = document.getElementById('eName').value.trim();
+    const algebra = rulesText.filter(Boolean);
+    const r = await fetch('/api/schemas/' + editingSchemaId, { method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify({name, algebra}) });
+    const j = await r.json();
+    if (r.ok) { toast('已保存，正在自动部署…'); closeModal('modalEdit'); loadSchemas(); watchDeploy(true); watchSync(true); }
+    else toast('保存失败: ' + (j.error || '未知'));
+  }
+  async function delSchema(sid) {
+    if (!confirm('删除方案「' + sid + '」？此操作不可恢复。')) return;
+    const r = await fetch('/api/schemas/' + sid, { method:'DELETE' });
+    const j = await r.json();
+    if (r.ok) { toast('已删除'); loadSchemas(); }
+    else toast('删除失败: ' + (j.error || '未知'));
+  }
+  function closeModal(id) { document.getElementById(id).classList.remove('show'); }
+
+  // ---------- 词库 ----------
+  async function loadDicts() {
+    try {
+      const r = await fetch('/api/dicts');
+      const list = await r.json();
+      document.getElementById('dictList').innerHTML = list.map(d => {
+        const kb = d.size > 1024 * 1024 ? (d.size / 1024 / 1024).toFixed(1) + ' MB' : Math.max(1, Math.round(d.size / 1024)) + ' KB';
+        return '<tr><td>' + esc(d.name) + '</td><td>' + kb + '</td>' +
+          '<td><a class="btn small" href="/api/dicts/' + encodeURIComponent(d.name) + '/export">下载</a></td></tr>';
+      }).join('') || '<tr><td colspan="3" class="hint">暂无词库</td></tr>';
+    } catch (e) { /* 忽略 */ }
+  }
+  async function importDict() {
+    const el = document.getElementById('dictFile');
+    const f = el.files[0];
+    if (!f) { toast('请先选择 .dict.yaml 文件'); return; }
+    el.value = '';
+    setStatus('导入词库中…', true);
+    try {
+      const fd = new FormData(); fd.append('file', f);
+      const r = await fetch('/api/dicts/import', { method: 'POST', body: fd });
+      const j = await r.json();
+      if (r.ok && j.ok) { setStatus('已导入词库'); toast('词库 ' + j.name + ' 已导入，正在自动部署…'); loadDicts(); watchDeploy(true); watchSync(true); }
+      else { setStatus('就绪'); toast('导入失败: ' + (j.error || '未知')); }
+    } catch (e) { setStatus('就绪'); toast('词库导入出错'); }
+  }
+
+  // ---------- 配置导入 ----------
+  async function importConfig() {
+    const el = document.getElementById('configFile');
+    const f = el.files[0];
+    el.value = '';
+    if (!f) return;
+    if (!confirm('导入将覆盖当前的自定义短语、双拼方案和词库。\n当前配置会自动备份到 backups 文件夹。确定继续吗？')) return;
+    setStatus('导入中…', true);
+    try {
+      const fd = new FormData(); fd.append('file', f);
+      const r = await fetch('/api/config/import', { method: 'POST', body: fd });
+      const j = await r.json();
+      if (r.ok && j.ok) {
+        setStatus('已导入');
+        toast(`导入成功：恢复 ${j.restored} 个文件` + (j.backed_up ? `（已备份 ${j.backed_up} 个）` : '') + '，正在自动部署…');
+        loadPhrases(); loadSchemas(); loadDicts(); watchDeploy(true); watchSync(true);
+      } else { setStatus('就绪'); toast('导入失败: ' + (j.error || '未知')); }
+    } catch (e) { setStatus('就绪'); toast('导入请求出错'); }
+  }
+
+  // 点击遮罩关闭弹窗
+  document.querySelectorAll('.modal-mask').forEach(m => {
+    m.addEventListener('click', e => { if (e.target === m) m.classList.remove('show'); });
+  });
+
+  // 自绘下拉：点选条目、点空白处收起
+  document.querySelectorAll('.dd').forEach(dd => {
+    dd.querySelector('.dd-menu').addEventListener('click', e => {
+      const it = e.target.closest('.dd-item');
+      if (!it) return;
+      dd.classList.remove('open');
+      const v = it.dataset.v;
+      if (v === NEW_GROUP) { pickDD(dd.dataset.for); return; }
+      document.getElementById(dd.dataset.for).value = v;
+      ddRender(dd.dataset.for);
+    });
+  });
+  document.addEventListener('click', e => {
+    if (!e.target.closest('.dd')) {
+      document.querySelectorAll('.dd.open').forEach(x => x.classList.remove('open'));
+    }
+  });
+
+  document.getElementById('aiEnabled').addEventListener('change', e => setAiPill(e.target.checked));
+
+  // 初始化
+  loadPhrases();
+  loadSchemas();
+  loadDicts();
+</script>
+</body>
+</html>
