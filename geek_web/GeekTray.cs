@@ -66,7 +66,26 @@ namespace GeekIME
         public static readonly Color Accent = Color.FromArgb(124, 108, 255); // 极客紫
         public const string RimeDir = @"F:\7.输入法";
         public const string WeaselDir = @"F:\12.Rime\weasel-0.17.4";
-        public const string WebUrl = "http://127.0.0.1:8765";
+        public const int DefaultPort = 8765;
+        // Web 管理台实际端口写在 web_port.txt（8765 被占用时 app.py 会自动顺延）
+        public static readonly string PortFile = System.IO.Path.Combine(RimeDir, @"geek_web\web_port.txt");
+        public static string WebUrl
+        {
+            get
+            {
+                int p = DefaultPort;
+                try
+                {
+                    if (System.IO.File.Exists(PortFile))
+                    {
+                        int v;
+                        if (int.TryParse(System.IO.File.ReadAllText(PortFile).Trim(), out v) && v > 0 && v < 65536) p = v;
+                    }
+                }
+                catch { }
+                return "http://127.0.0.1:" + p;
+            }
+        }
     }
 
     // ─────────────────────────────── 托盘主体 ───────────────────────────────
@@ -114,7 +133,7 @@ namespace GeekIME
         // 确保 Web 管理台服务在跑（静默，无任何窗口）
         private void EnsureWeb()
         {
-            if (PortOpen(8765)) return;
+            if (WebAlive(new Uri(Theme.WebUrl).Port)) return;
             var psi = new ProcessStartInfo
             {
                 FileName = "pythonw.exe",
@@ -125,7 +144,8 @@ namespace GeekIME
                 WindowStyle = ProcessWindowStyle.Hidden
             };
             try { Process.Start(psi); } catch { }
-            for (int i = 0; i < 20 && !PortOpen(8765); i++) Thread.Sleep(300);
+            // 端口可能被占用而顺延，每次都重新读 web_port.txt
+            for (int i = 0; i < 24 && !WebAlive(new Uri(Theme.WebUrl).Port); i++) Thread.Sleep(300);
         }
 
         // ── 菜单构建 ──
@@ -223,16 +243,18 @@ namespace GeekIME
         }
 
         // ── 功能：Web 管理台 ──
-        private bool PortOpen(int port)
+        // 端口上有响应不算数，要确认是我们的管理台（避免误判别的程序占用端口）
+        private bool WebAlive(int port)
         {
+            if (port <= 0) return false;
             try
             {
-                using (var c = new TcpClient())
-                {
-                    var ar = c.BeginConnect("127.0.0.1", port, null, null);
-                    if (ar.AsyncWaitHandle.WaitOne(300)) { c.EndConnect(ar); return true; }
-                    return false;
-                }
+                var req = (HttpWebRequest)WebRequest.Create("http://127.0.0.1:" + port + "/api/ping");
+                req.Timeout = 800;
+                req.Proxy = null;
+                using (var resp = (HttpWebResponse)req.GetResponse())
+                using (var sr = new StreamReader(resp.GetResponseStream()))
+                    return sr.ReadToEnd().IndexOf("GeekIME", StringComparison.Ordinal) >= 0;
             }
             catch { return false; }
         }
@@ -251,7 +273,7 @@ namespace GeekIME
                 if (f.ShowDialog() != DialogResult.OK) return;
                 if (string.IsNullOrEmpty(f.Word) || string.IsNullOrEmpty(f.Code)) return;
 
-                if (!PortOpen(8765)) EnsureWeb(); // 后台服务没起来就先静默拉起
+                if (!WebAlive(new Uri(Theme.WebUrl).Port)) EnsureWeb(); // 后台服务没起来就先静默拉起
 
                 var payload = new JavaScriptSerializer().Serialize(new Dictionary<string, object>
                 {

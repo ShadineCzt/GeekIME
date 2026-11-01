@@ -23,3 +23,5 @@ user.yaml
 # binaries
 GeekTray.exe
 *.bin
+
+web_port.txt

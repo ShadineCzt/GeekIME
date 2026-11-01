@@ -1109,6 +1109,37 @@ def ai_history():
         return jsonify({"items": ["读取失败: %s" % e]})
 
 
+@app.route("/api/ping")
+def api_ping():
+    return jsonify({"app": "GeekIME", "pid": os.getpid()})
+
+
+# ---------- 启动 ----------
+WEB_PORT = int(os.environ.get("GEEK_WEB_PORT") or 8765)  # 默认 8765
+PORT_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "web_port.txt")
+
+
+def _pick_port(start, count=20):
+    """从 start 开始找第一个能绑定的端口；被占用就顺延（8765 → 8766 → …）"""
+    import socket
+    for p in range(start, start + count):
+        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        try:
+            s.bind(("127.0.0.1", p))
+            return p
+        except OSError:
+            continue
+        finally:
+            s.close()
+    raise RuntimeError("端口 %d-%d 全被占用" % (start, start + count - 1))
+
+
 if __name__ == "__main__":
-    print("GeekIME Web 管理台启动: http://127.0.0.1:8765")
-    app.run(host="127.0.0.1", port=8765, debug=False, use_reloader=False)
+    port = _pick_port(WEB_PORT)
+    try:
+        with open(PORT_FILE, "w", encoding="utf-8") as f:
+            f.write(str(port))
+    except OSError:
+        pass
+    print("GeekIME Web 管理台启动: http://127.0.0.1:%d" % port)
+    app.run(host="127.0.0.1", port=port, debug=False, use_reloader=False)
