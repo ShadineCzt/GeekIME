@@ -39,6 +39,7 @@ engine:
   filters:
     - simplifier
     - uniquifier
+    - lua_filter@phrase_abbr
 
 speller:
   alphabet: zyxwvutsrqponmlkjihgfedcba;

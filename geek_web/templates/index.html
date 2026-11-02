@@ -326,6 +326,7 @@
     <div class="tab" role="button" tabindex="0" data-tab="schemas" onclick="switchTab('schemas')">双拼方案</div>
     <div class="tab" role="button" tabindex="0" data-tab="dicts" onclick="switchTab('dicts')">词库</div>
     <div class="tab" role="button" tabindex="0" data-tab="ai" onclick="switchTab('ai')">AI 助手</div>
+    <div class="tab" role="button" tabindex="0" data-tab="english" onclick="switchTab('english')">英文·设置</div>
   </div>
 
   <div class="wrap">
@@ -489,6 +490,46 @@
         <div id="aiHistory" class="ai-hist">（暂无记录）</div>
       </div>
     </div>
+
+    <!-- 英文记忆与设置 -->
+    <div class="panel" id="panel-english">
+      <div class="card">
+        <h2><span class="dot"></span>参数设置<span class="pill">保存后输入法约 5 秒内自动生效，无需部署</span></h2>
+        <div class="grid-2">
+          <div class="fcell">
+            <label class="flabel" for="setMinLen">英文自动记忆：最短字母数</label>
+            <input id="setMinLen" type="number" min="2" max="30" step="1" inputmode="numeric">
+            <div class="hint">直接打一串字母按回车上屏时，长度达到该值的才会被记住。建议 5~6；太小会把日常误触的字母串也记进来。</div>
+          </div>
+          <div class="fcell">
+            <label class="flabel" for="setAbbrLen">候选短语缩略：显示前几个字符</label>
+            <input id="setAbbrLen" type="number" min="0" max="50" step="1" inputmode="numeric">
+            <div class="hint">短语超过该长度时候选栏只显示开头 + …（上屏仍是完整内容，不受影响）。填 0 = 不缩略。</div>
+          </div>
+        </div>
+        <div class="toolbar" style="margin:14px 0 0">
+          <button class="btn primary" onclick="saveSettings()">保存设置</button>
+        </div>
+      </div>
+      <div class="card">
+        <div class="list-head">
+          <h2><span class="dot"></span>英文记忆词库<span class="count-badge" id="enCount">0</span></h2>
+          <div class="search-box"><input id="enSearch" placeholder="搜索单词…" oninput="queueEnglishRender()" autocomplete="off" spellcheck="false"></div>
+        </div>
+        <div class="hint">打一串字母按回车（≥ 最短字母数）会自动记到这里，下次打同样字母直接出候选；也可以手动添加/删除。管理台增删后输入法约 2 秒内同步。托盘菜单的「编辑英文记忆词库」打开的就是这份文件。</div>
+        <div class="form-row" style="margin:10px 0">
+          <input id="enWord" placeholder="添加单词，如 persistence（回车添加）" autocomplete="off" spellcheck="false" onkeydown="if(event.key==='Enter')addEnglish()">
+          <button class="btn primary" onclick="addEnglish()">添加</button>
+        </div>
+        <div class="table-scroll">
+        <table>
+          <thead><tr><th>单词</th><th style="width:90px">权重</th><th style="width:100px">操作</th></tr></thead>
+          <tbody id="enList"></tbody>
+        </table>
+        </div>
+        <div class="empty" id="enEmpty" style="display:none">还没有记忆任何英文词。试着打一串字母（比如自己的英文名）然后按回车。</div>
+      </div>
+    </div>
   </div>
 
   <!-- 方案创建/复制弹窗 -->
@@ -630,6 +671,7 @@
     document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.tab === name));
     document.querySelectorAll('.panel').forEach(p => p.classList.toggle('active', p.id === 'panel-' + name));
     if (name === 'ai') loadAi();
+    if (name === 'english') { loadSettings(); loadEnglish(); }
   }
 
   // ---------- AI 助手 ----------
@@ -697,6 +739,67 @@
       const el = document.getElementById('aiHistory');
       el.textContent = d.items && d.items.length ? d.items.join('\n\n') : '（暂无记录）';
     } catch (e) { }
+  }
+
+  // ---------- 英文记忆与设置 ----------
+  async function loadSettings() {
+    try {
+      const r = await fetch('/api/settings');
+      const d = await r.json();
+      document.getElementById('setMinLen').value = d.english_min_len;
+      document.getElementById('setAbbrLen').value = d.phrase_display_len;
+    } catch (e) { }
+  }
+  async function saveSettings() {
+    const body = {
+      english_min_len: parseInt(document.getElementById('setMinLen').value, 10),
+      phrase_display_len: parseInt(document.getElementById('setAbbrLen').value, 10)
+    };
+    try {
+      const r = await fetch('/api/settings', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+      const d = await r.json();
+      if (d.ok) {
+        document.getElementById('setMinLen').value = d.english_min_len;
+        document.getElementById('setAbbrLen').value = d.phrase_display_len;
+        toast('设置已保存 ✓ 输入法几秒内自动生效');
+      } else toast('保存失败: ' + (d.error || ''));
+    } catch (e) { toast('保存请求出错'); }
+  }
+  async function loadEnglish() {
+    try {
+      const q = (document.getElementById('enSearch').value || '').trim();
+      const r = await fetch('/api/english' + (q ? '?q=' + encodeURIComponent(q) : ''));
+      const d = await r.json();
+      const items = d.items || [];
+      document.getElementById('enCount').textContent = d.total;
+      document.getElementById('enList').innerHTML = items.map(it => `<tr>
+        <td style="font-family:Consolas,monospace">${esc(it.word)}</td>
+        <td>${it.weight}</td>
+        <td><button class="btn danger small" onclick="delEnglish('${esc(it.word)}')">删除</button></td>
+      </tr>`).join('');
+      document.getElementById('enEmpty').style.display = items.length ? 'none' : 'block';
+    } catch (e) { }
+  }
+  let _enTimer = null;
+  function queueEnglishRender() { clearTimeout(_enTimer); _enTimer = setTimeout(loadEnglish, 200); }
+  async function addEnglish() {
+    const el = document.getElementById('enWord');
+    const word = el.value.trim();
+    if (!word) return;
+    try {
+      const r = await fetch('/api/english', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ word }) });
+      const d = await r.json();
+      if (d.ok) { el.value = ''; toast('已添加 ✓ 输入法几秒内同步'); loadEnglish(); }
+      else toast('添加失败: ' + (d.error || ''));
+    } catch (e) { toast('添加请求出错'); }
+  }
+  async function delEnglish(w) {
+    if (!confirm('删除记忆词「' + w + '」？删除后输入法里就不再出现。')) return;
+    try {
+      const r = await fetch('/api/english', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ word: w }) });
+      const d = await r.json();
+      if (d.ok) { toast('已删除 ✓'); loadEnglish(); } else toast('删除失败');
+    } catch (e) { toast('删除请求出错'); }
   }
 
   // ---------- 短语库模糊检索（AI 助手与页面共用 /api/phrases/search） ----------

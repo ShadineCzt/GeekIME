@@ -1,9 +1,12 @@
 -- GeekIME English mode translator
--- 输入 e + 英文字母 → 英文单词候选
--- 选过的英文单词自动记忆，下次输入时优先展示
--- 性能版：击键路径零磁盘 IO（词典/用户表常驻内存），
---         学习逻辑改由 commit_notifier 驱动（低频，仅上屏时触发）
+-- 输入 e + 英文字母 → 英文单词候选（主词典 + 用户记忆，前缀补全）
+-- 直接打一串字母按回车上屏 → 自动记忆（长度达到阈值才记，阈值在 Web 管理台调）
+-- 记忆过的词在普通双拼输入时也会直接出现在候选里（搜狗式英文回显）
+-- 性能版：击键路径零磁盘 IO（词典/用户表/设置常驻内存，mtime 节流探测），
+--         学习逻辑由 commit_notifier 驱动（仅上屏时触发）
 local M = {}
+
+local settings = require("lua/geek_settings")
 
 -- ── 路径解析 ──────────────────────────────────────────
 local function script_dir()
@@ -16,8 +19,10 @@ local DATA_DIR = script_dir() .. "/.."
 local DICT_PATH = DATA_DIR .. "/english.dict.yaml"
 local USER_DICT_PATH = DATA_DIR .. "/english_user.txt"
 
--- ── 安全获取 lfs ─────────────────────────────────────
+-- ── 安全获取 lfs ─────────────────────────────────────────
 local lfs_ok, lfs = pcall(require, "lfs")
+
+local MAX_LEARN_LEN = 40  -- 超长纯字母串基本是误触/粘贴，不记
 
 -- ── 主词典（内存缓存，mtime 节流探测：最多每 5 秒查一次修改时间）──
 local dict_cache = nil
@@ -67,45 +72,91 @@ local function load_dict()
   return d
 end
 
--- ── 用户记忆表（内存缓存；仅在 commit 时写盘）──────────────
+-- ── 用户记忆表（内存缓存 + 2 秒 mtime 节流；管理台增删后约 2 秒内同步）──
 local user_cache = nil
+local user_mtime = 0
+local user_probe = 0
+
+local function user_file_mtime()
+  if lfs_ok then
+    local attr = lfs.attributes(USER_DICT_PATH)
+    return attr and attr.modification or 0
+  end
+  return user_mtime
+end
 
 local function load_user()
-  if user_cache then return user_cache end
-  user_cache = {}
+  local now = os.time()
+  if user_cache and now - user_probe < 2 then return user_cache end
+  user_probe = now
+  local mt = user_file_mtime()
+  if user_cache and mt == user_mtime then return user_cache end
+  user_mtime = mt
+  local t = {}
   local f = io.open(USER_DICT_PATH, "r")
-  if not f then return user_cache end
+  if not f then
+    user_cache = t
+    return t
+  end
   for line in f:lines() do
     local word, weight = line:match("^(%S+)%s+(%d+)")
-    if word then user_cache[word] = tonumber(weight) or 100 end
+    if word then t[word] = tonumber(weight) or 100 end
   end
   f:close()
-  return user_cache
+  user_cache = t
+  return t
 end
 
 local function save_user()
   if not user_cache then return end
-  local f = io.open(USER_DICT_PATH, "w")
+  -- 原子写：先写临时文件再改名，避免写一半崩溃损坏词库
+  local tmp = USER_DICT_PATH .. ".tmp"
+  local f = io.open(tmp, "w")
   if not f then return end
   for word, weight in pairs(user_cache) do
     f:write(word, "\t", tostring(weight), "\n")
   end
   f:close()
+  os.remove(USER_DICT_PATH)
+  os.rename(tmp, USER_DICT_PATH)
+  user_probe = os.time()
+  user_mtime = user_file_mtime()
 end
 
 -- ── 学习逻辑：commit_notifier 回调（仅在上屏时执行一次）──────
-local function learn_from_commit(text)
+local function learn_from_commit(text, ctx)
   if not text or text == "" then return end
-  -- 仅学习「纯字母词」（即英文模式上屏的内容）
+  -- 仅学习「纯字母」上屏内容（英文模式选词、或直接打字母回车）
   local word = text:match("^([%a]+)$")
   if not word then return end
   word = word:lower()
+  if #word > MAX_LEARN_LEN then return end
+
+  -- e 模式下回车上屏会带 e 前缀：若去掉 e 后是已知词，按已知词处理
+  local input = nil
+  if ctx then pcall(function() input = ctx.input end) end
+  if input and input == text and #input >= 2
+     and input:sub(1, 1) == "e" and input:sub(2):match("^[a-z]+$") then
+    local rest = input:sub(2)
+    if load_dict()[rest] or load_user()[rest] then
+      word = rest
+    end
+  end
+
   local dict = load_dict()
   local user = load_user()
-  -- 只学主词典或用户表中已有的词，避免误学任意字符串
   if dict[word] or user[word] then
+    -- 已知词：重复使用加权
     user[word] = (user[word] or 100) + 50
     save_user()
+  else
+    -- 新词：直接打字母回车上屏的，达到阈值长度才记（阈值在 Web 管理台调）
+    local min_len = tonumber(settings.get("english_min_len")) or 6
+    if min_len < 2 then min_len = 2 end
+    if #word >= min_len then
+      user[word] = 100
+      save_user()
+    end
   end
 end
 
@@ -116,7 +167,7 @@ local function attach(env)
   env.engine.context.commit_notifier:connect(function(ctx)
     local ok, text = pcall(function() return ctx:get_commit_text() end)
     if ok then
-      pcall(learn_from_commit, text)
+      pcall(learn_from_commit, text, ctx)
     end
   end)
 end
@@ -124,6 +175,15 @@ end
 -- ── 主入口 ────────────────────────────────────────────
 function M.func(input, seg, env)
   if env then attach(env) end
+
+  -- 记忆过的英文词：普通输入直接打同一串字母即可再次上屏（不用进 e 模式）
+  local lw = input:lower()
+  if #lw >= 2 and lw:match("^[a-z]+$") then
+    local user = load_user()
+    if user[lw] then
+      yield(Candidate("english_user", seg.start, seg._end, lw, "英文"))
+    end
+  end
 
   -- 仅处理 e + 字母 的输入
   if input:sub(1, 1) ~= "e" then return end

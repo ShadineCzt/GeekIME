@@ -1109,6 +1109,123 @@ def ai_history():
         return jsonify({"items": ["读取失败: %s" % e]})
 
 
+# ---------- 全局设置（geek_settings.txt，输入法 Lua 侧 5 秒内自动读取） ----------
+
+SETTINGS_FILE = os.path.join(BASE_DIR, "geek_settings.txt")
+SETTING_DEFS = [  # (键, 默认值, 最小, 最大)
+    ("english_min_len", 6, 2, 30),     # 英文自动记忆：最短字母数
+    ("phrase_display_len", 8, 0, 50),  # 候选短语缩略：显示前 N 个字符（0=不缩略）
+]
+
+
+def _read_settings():
+    s = {k: d for k, d, _, _ in SETTING_DEFS}
+    try:
+        with open(SETTINGS_FILE, encoding="utf-8") as f:
+            for line in f:
+                m = re.match(r"^([\w]+)\s*=\s*(-?\d+)\s*$", line.strip())
+                if m and m.group(1) in s:
+                    s[m.group(1)] = int(m.group(2))
+    except OSError:
+        pass
+    return s
+
+
+@app.route("/api/settings")
+def api_settings_get():
+    return jsonify(_read_settings())
+
+
+@app.route("/api/settings", methods=["POST"])
+def api_settings_set():
+    data = request.get_json(force=True, silent=True) or {}
+    s = _read_settings()
+    for k, _d, lo, hi in SETTING_DEFS:
+        if k in data:
+            try:
+                s[k] = max(lo, min(hi, int(data[k])))
+            except (TypeError, ValueError):
+                return jsonify({"error": f"{k} 不是有效数字"}), 400
+    tmp = SETTINGS_FILE + ".tmp"
+    with open(tmp, "w", encoding="utf-8", newline="\n") as f:
+        for k, _d, _lo, _hi in SETTING_DEFS:
+            f.write(f"{k}={s[k]}\n")
+    os.replace(tmp, SETTINGS_FILE)
+    return jsonify({"ok": True, **s})
+
+
+# ---------- 英文记忆词库（english_user.txt，与输入法 Lua 侧共用） ----------
+
+ENGLISH_USER_FILE = os.path.join(BASE_DIR, "english_user.txt")
+
+
+def _read_english_user():
+    merged = {}
+    try:
+        with open(ENGLISH_USER_FILE, encoding="utf-8") as f:
+            for line in f:
+                p = line.split()
+                if not p:
+                    continue
+                w = p[0].lower()
+                try:
+                    wt = int(p[1])
+                except (IndexError, ValueError):
+                    wt = 100
+                if w not in merged or wt > merged[w]:
+                    merged[w] = wt
+    except OSError:
+        pass
+    return [{"word": w, "weight": v} for w, v in merged.items()]
+
+
+def _write_english_user(items):
+    items = sorted(items, key=lambda d: (-d["weight"], d["word"]))
+    tmp = ENGLISH_USER_FILE + ".tmp"
+    with open(tmp, "w", encoding="utf-8", newline="\n") as f:
+        for it in items:
+            f.write(f"{it['word']}\t{it['weight']}\n")
+    os.replace(tmp, ENGLISH_USER_FILE)
+
+
+@app.route("/api/english")
+def api_english_get():
+    items = _read_english_user()
+    q = (request.args.get("q") or "").strip().lower()
+    if q:
+        items = [d for d in items if q in d["word"]]
+    return jsonify({"items": items, "total": len(items)})
+
+
+@app.route("/api/english", methods=["POST"])
+def api_english_add():
+    data = request.get_json(force=True, silent=True) or {}
+    word = (data.get("word") or "").strip().lower()
+    if not re.match(r"^[a-z]{2,40}$", word):
+        return jsonify({"error": "只能是 2-40 个英文字母"}), 400
+    try:
+        weight = max(1, int(data.get("weight") or 100))
+    except (TypeError, ValueError):
+        weight = 100
+    merged = {d["word"]: d["weight"] for d in _read_english_user()}
+    merged[word] = max(merged.get(word, 0), weight)
+    _write_english_user([{"word": w, "weight": v} for w, v in merged.items()])
+    return jsonify({"ok": True})
+
+
+@app.route("/api/english", methods=["DELETE"])
+def api_english_delete():
+    data = request.get_json(force=True, silent=True) or {}
+    words = data.get("words") or ([data.get("word")] if data.get("word") else [])
+    words = [w.strip().lower() for w in words if isinstance(w, str) and w.strip()]
+    if not words:
+        return jsonify({"error": "没有要删除的词"}), 400
+    dropped = set(words)
+    items = [d for d in _read_english_user() if d["word"] not in dropped]
+    _write_english_user(items)
+    return jsonify({"ok": True, "removed": len(words)})
+
+
 @app.route("/api/ping")
 def api_ping():
     return jsonify({"app": "GeekIME", "pid": os.getpid()})

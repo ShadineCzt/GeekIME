@@ -18,7 +18,12 @@ english_last.txt
 installation.yaml
 user.yaml
 *.userdb/
-*.userdb/
+
+# english learning & shared settings (runtime user data)
+english_user.txt
+english_user.txt.tmp
+geek_settings.txt
+geek_settings.txt.tmp
 
 # binaries
 GeekTray.exe
